@@ -123,7 +123,7 @@
     {"type": "p", "text": "**Do** или **Does** выносим в самое начало, дальше — кто и глагол в начальной форме: **==Do== you love coffee?** **==Does== he love coffee?**"},
     {"type": "p", "text": "Вопросительное слово стоит перед do/does: **Where ==do== you live?** **How much ==does== it cost?**"},
     {"type": "table", "table": {"highlight": 0, "rows": [{"label": "Настоящее", "tense": "present", "lines": [{"who": "I, you, we, they", "cells": ["==Do== … love?", "love", "==don't== love"]}, {"who": "he, she, it", "cells": ["==Does== … love?", "love==s==", "==doesn't== love"]}]}]}},
-    {"type": "note", "text": "**Разговорный вопрос.** В живой речи вопрос часто задают без do, does, did, will — только интонацией и знаком «?»: **Do you hear me?** → **You hear me?**, **Does she speak French?** → **She speak==s== French?**, **Did you see him?** → **You ==saw== him?**, **Will you come?** → **You ==will== come?** Глагол тогда стоит в обычной форме утверждения. В упражнениях засчитываются оба варианта."},
+    {"type": "note", "text": "**Разговорный вопрос.** В живой речи вопрос часто задают без do, does, did, will — только интонацией. Для этого среди слов есть кнопка ==?==: соберите утверждение и поставьте ==?== в конце. **Do you hear me?** → **You hear me ==?==**, **Does she speak French?** → **She speaks French ==?==**, **Did you see him?** → **You saw him ==?==**, **Will you come?** → **You will come ==?==** Глагол тогда в обычной форме утверждения. В упражнениях засчитываются оба варианта; без кнопки ==?== такое предложение — утверждение, а не вопрос."},
     {"type": "h2", "text": "Прошедшее время"},
     {"type": "p", "text": "**Когда:** действие уже закончилось. Подсказывают слова [[yesterday, last week, last year, two days ago, in 2010, as a child]]."},
     {"type": "h3", "text": "Утверждение"},
@@ -179,7 +179,7 @@
   ],
   "hint": [
     {"type": "table", "table": {"rows": [{"label": "Будущее", "tense": "future", "lines": [{"who": "I, you, we, they, he, she, it", "cells": ["==Will== … love?", "==will== love", "==won't== love"]}]}, {"label": "Настоящее", "tense": "present", "lines": [{"who": "I, you, we, they", "cells": ["==Do== … love?", "love", "==don't== love"]}, {"who": "he, she, it", "cells": ["==Does== … love?", "love==s==", "==doesn't== love"]}]}, {"label": "Прошедшее", "tense": "past", "lines": [{"who": "I, you, we, they, he, she, it", "cells": ["==Did== … love?", "love==d==", "==didn't== love"]}]}]}},
-    {"type": "list", "items": ["После do, does, did, will — **начальная форма** глагола: Did you ++see++? (--saw--)", "Разговорный вопрос без do/does/did: **You hear me?** **She speaks French?** **You saw him?** — тоже верно", "**-s** только в утверждении с he, she, it: She love==s==.", "«…» — место для «кто»: Do ==you== love?", "don't = do not, doesn't = does not, didn't = did not, won't = will not"]}
+    {"type": "list", "items": ["После do, does, did, will — **начальная форма** глагола: Did you ++see++? (--saw--)", "Кнопка **?** вместо do/does/did/will: **You hear me ?** **She speaks French ?** — тоже верный вопрос", "**-s** только в утверждении с he, she, it: She love==s==.", "«…» — место для «кто»: Do ==you== love?", "don't = do not, doesn't = does not, didn't = did not, won't = will not"]}
   ],
   "items": [
     {"id": "L1-001", "ru": "Она обычно ходит на работу пешком.", "answers": ["She usually walks to work."], "tense": "present", "type": "affirmative", "elements": ["form:-s", "word:usually", "order:adverb", "prep:to"], "traps": ["goes", "walking"]},

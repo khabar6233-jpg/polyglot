@@ -14,7 +14,7 @@
   <p>Откройте эту страницу, чтобы проверить все уроки: каждый ответ должен собираться из кнопок.</p>
   <div id="out">Идёт проверка…</div>
   <script type="module">
-    import { LessonEngine, Memory, key, isDone, scoreOf, expandGroups, usedButtons } from "./js/engine.js";
+    import { LessonEngine, Memory, key, isDone, scoreOf, expandGroups, usedButtons, answerText } from "./js/engine.js";
 
     const problems = [];
     const assert = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -43,9 +43,16 @@
       const q3 = { id: "Q3", ru: "Твой брат купит машину?", answers: ["Will your brother buy a car?"], tense: "future", type: "question" };
       const e2 = new LessonEngine({ id: "q", number: 0, title: "", verbs: [{ base: "hear", s: "hears", past: "heard" }, { base: "buy", s: "buys", past: "bought" }], items: [q, q2, q3] });
       const spoken = (it) => e2.variantsOf(it).map((v) => v.join(" "));
-      assert(spoken(q).includes("you hear me"), "разговорный вопрос: You hear me?");
-      assert(spoken(q2).includes("she bought a car"), "разговорный вопрос: She bought a car?");
-      assert(spoken(q3).includes("your brother will buy a car"), "разговорный вопрос: Your brother will buy a car?");
+      assert(spoken(q).includes("you hear me ?"), "разговорный вопрос: You hear me + «?»");
+      assert(!spoken(q).includes("you hear me"), "без «?» разговорный вопрос не засчитывается");
+      assert(spoken(q2).includes("she bought a car ?"), "разговорный вопрос: She bought a car?");
+      assert(spoken(q3).includes("your brother will buy a car ?"), "разговорный вопрос: Your brother will buy a car?");
+      let x = ["do", "you", "hear", "me"].reduce((tt, w) => e2.tap(tt, w, true), e2.newTask(q));
+      assert(x.solved, "полная форма засчитывается и без «?»");
+      x = ["you", "hear", "me"].reduce((tt, w) => e2.tap(tt, w, true), e2.newTask(q));
+      assert(!isDone(x), "разговорная форма ждёт «?»");
+      x = e2.tap(x, "?", true);
+      assert(x.solved && answerText(x) === "You hear me?", "«?» ставится без пробела");
     }
     t = build("she didn't buy");
     assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
@@ -83,7 +90,9 @@
         }
         // Короткий вариант не должен быть началом длинного: иначе непонятно, когда проверять.
         for (const a of vars) for (const b of vars) {
-          if (b.length > a.length && a.every((w, i) => key(w) === key(b[i]))) {
+          // Исключение: «do you hear me» и «do you hear me ?» — знак вопроса можно поставить или нет.
+          const onlyQ = b.length === a.length + 1 && b[b.length - 1] === "?";
+          if (!onlyQ && b.length > a.length && a.every((w, i) => key(w) === key(b[i]))) {
             problems.push(`${at}: вариант «${a.join(" ")}» — начало варианта «${b.join(" ")}»`);
           }
         }
@@ -91,7 +100,9 @@
         const traps = task.buttons.filter((b) => !vars.some((v) => v.some((w) => key(w) === key(b))));
         assert(traps.length >= 4, `${at}: мало ловушек (${traps.length})`);
         for (const v of vars) {
-          for (const auto of [true, false]) {
+          // «Полная форма + ?» в автопроверке не набрать: полная форма засчитывается раньше. Это нормально.
+          const fullPlusQ = v[v.length - 1] === "?" && vars.some((o) => o.length === v.length - 1 && o.every((w, i) => key(w) === key(v[i])));
+          for (const auto of fullPlusQ ? [false] : [true, false]) {
             let x = task;
             for (const w of v) {
               // Нажимать можно только ещё не использованную кнопку: слова «уходят» в строку ответа.

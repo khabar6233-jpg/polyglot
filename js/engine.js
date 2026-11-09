@@ -67,10 +67,14 @@ export function variants(answers, properNouns) {
   return all.filter((v) => !seen.has(v.join(" ")) && seen.add(v.join(" ")));
 }
 
-/** Слова → предложение с заглавной буквы и знаком в конце. */
+/** Кнопка «?»: разговорный вопрос одной интонацией, вместо do / does / did / will. */
+export const QMARK = "?";
+
+/** Слова → предложение с заглавной буквы и знаком в конце (если «?» уже нажат — второй не ставим). */
 export function sentence(tokens, punct) {
-  const s = tokens.join(" ");
-  return s.charAt(0).toUpperCase() + s.slice(1) + punct;
+  const words = tokens[tokens.length - 1] === QMARK ? tokens.slice(0, -1) : tokens;
+  const s = words.join(" ");
+  return s.charAt(0).toUpperCase() + s.slice(1) + (words === tokens ? punct : QMARK);
 }
 
 /** Как слово выглядит на кнопке: как в ответе (TV, London), только i → I. */
@@ -102,7 +106,7 @@ export function wordCategory(word) {
   if (PRONOUNS.has(w)) return "pron";
   if (ARTICLES.has(w)) return "art";
   if (PREPOSITIONS.has(w)) return "prep";
-  if (QUESTION_WORDS.has(w)) return "q";
+  if (QUESTION_WORDS.has(w) || w === QMARK) return "q";
   return null;
 }
 
@@ -131,6 +135,7 @@ export function verbAt(tokens, index, lexicon) {
 
 export function tagsForToken(tokens, index, item, lexicon) {
   const w = key(tokens[index]);
+  if (w === QMARK) return ["order:spoken-question"];
   if (AUX.has(w)) {
     return item.type === "question" && QUESTION_AUX.has(w) ? [`aux:${w}`, "order:question"] : [`aux:${w}`];
   }
@@ -277,7 +282,10 @@ export class LessonEngine {
   variantsOf(item) {
     if (!this.variantCache.has(item.id)) {
       const vars = variants(item.answers, this.properNouns);
-      const extra = item.type === "question" ? vars.map((v) => this.spokenQuestion(v)).filter(Boolean) : [];
+      // В вопросе: полная форма — с «?» в конце или без, разговорная — обязательно с «?»: «you hear me ?».
+      const extra = item.type === "question"
+        ? [...vars.map((v) => [...v, QMARK]), ...vars.map((v) => this.spokenQuestion(v)).filter(Boolean).map((v) => [...v, QMARK])]
+        : [];
       const seen = new Set(vars.map((v) => v.map(key).join(" ")));
       this.variantCache.set(item.id, [...vars, ...extra.filter((v) => !seen.has(v.map(key).join(" ")) && seen.add(v.map(key).join(" ")))]);
     }
@@ -327,7 +335,8 @@ export class LessonEngine {
     }
     const seen = new Set();
     const buttons = [];
-    for (const w of [...vars.flat(), ...buildTraps(item, vars, this.lexicon)].map(label)) {
+    // Кнопка «?» есть в каждом предложении: в вопросе она нужна, в утверждении — это ловушка.
+    for (const w of [...vars.flat(), ...buildTraps(item, vars, this.lexicon), QMARK].map(label)) {
       if (seen.has(key(w))) continue;
       seen.add(key(w));
       for (let i = 0; i < (need.get(key(w)) || 1); i++) buttons.push(w);
@@ -340,11 +349,14 @@ export class LessonEngine {
     };
   }
 
-  /** Правильный вариант, больше всего похожий на собранное. При равенстве — первый. */
+  /**
+   * Правильный вариант, больше всего похожий на собранное. При равенстве — тот, что совпадает
+   * с началом ответа, затем более короткий («do you hear me» раньше, чем «do you hear me ?»).
+   */
   closestVariant(task) {
     let best = null, bestScore = null;
     for (const v of task.variants) {
-      const s = [align(v, task.built).length, startsWith(v, task.built) ? 1 : 0, v.length];
+      const s = [align(v, task.built).length, startsWith(v, task.built) ? 1 : 0, -v.length];
       if (!best || s[0] > bestScore[0] || (s[0] === bestScore[0] && (s[1] > bestScore[1] ||
         (s[1] === bestScore[1] && s[2] > bestScore[2])))) { best = v; bestScore = s; }
     }

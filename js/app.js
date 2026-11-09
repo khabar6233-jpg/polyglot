@@ -208,7 +208,8 @@ function taskCard() {
   const built = h("div", { class: "built" + (done ? " done" : ""), id: "built" });
   if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
-    const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && i === t.built.length - 1 ? t.punctuation : "");
+    const last = i === t.built.length - 1;
+    const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && last && w !== "?" ? t.punctuation : "");
     // В строке ответа слова обычного цвета.
     built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : "") }, shown));
   });
@@ -383,6 +384,7 @@ function describe(k) {
   if (kind === "past") return v === "-ed" ? ["-ed", "прошедшее время правильных глаголов"] : [v, "прошедшая форма неправильного глагола"];
   if (kind === "form") return v === "-s" ? ["-s у he, she, it", "форма глагола в настоящем времени"]
     : v === "base" ? ["начальная форма глагола", "после do, does, did, will и с I, you, we, they"] : [v, "форма глагола"];
+  if (kind === "order" && v === "spoken-question") return ["?", "разговорный вопрос — кнопка «?» в конце"];
   if (kind === "order") return v === "question" ? ["порядок слов в вопросе", "do, does, did, will в начале"]
     : v === "adverb" ? ["место наречия", "usually, often, well…"] : [v, "порядок слов"];
   if (kind === "tense") return [{ present: "Present Simple", past: "Past Simple", future: "Future Simple" }[v] || v, "время"];
