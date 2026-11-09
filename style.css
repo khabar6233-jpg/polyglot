@@ -94,6 +94,10 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
   padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
 }
 .built.done { background: var(--ok-soft); border-color: var(--ok); }
+.built.fixed { border-color: var(--mid); }
+.result-head.bad { color: var(--bad); }
+.attempt { font-size: calc(15px * var(--k)); color: var(--muted); }
+.attempt s { color: var(--bad); }
 .built .ph { color: var(--muted); font-size: calc(15px * var(--k)); padding: 2px 0; }
 .chip {
   background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 2px 9px;

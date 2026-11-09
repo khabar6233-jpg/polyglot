@@ -1,7 +1,7 @@
 // Веб-версия приложения: экраны и связь с движком.
 
 import {
-  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory,
+  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory, sentence,
 } from "./engine.js";
 
 const PLACEHOLDER = "Нажимайте слова по порядку. Нажатие на эту строку (или ⌫) стирает последнее слово.";
@@ -205,7 +205,8 @@ function header() {
 function taskCard() {
   const t = S.task;
   const done = isDone(t);
-  const built = h("div", { class: "built" + (done ? " done" : ""), id: "built" });
+  // Зелёная рамка — собрано верно; жёлтая — показан правильный ответ после ошибки или «Показать ответ».
+  const built = h("div", { class: "built" + (t.solved ? " done" : done ? " fixed" : ""), id: "built" });
   if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
     const last = i === t.built.length - 1;
@@ -239,10 +240,12 @@ function taskCard() {
 function donePanel() {
   const t = S.task;
   const head = t.revealed ? ["Ответ показан · балл 2", "mid"]
+    : t.forced ? [`Ошибка — правильный ответ выше · балл ${scoreOf(t)}`, "bad"]
     : t.errors === 0 ? ["Верно! · балл 5", "ok"] : [`Получилось, ошибок: ${t.errors} · балл ${scoreOf(t)}`, "mid"];
   const others = otherAnswers(t);
   return h("div", { class: "done-panel" },
     h("div", { class: `result-head ${head[1]}` }, head[0]),
+    t.forced ? h("div", { class: "attempt" }, "Ваш ответ: ", h("s", {}, sentence(t.attempt, t.punctuation))) : null,
     S.justPassed ? h("div", { class: "pass" }, "Цель урока достигнута: средний балл 4.5! Следующий урок открыт.") : null,
     others.length ? h("div", { class: "others" }, "Тоже правильно: " + others.slice(0, 3).join("  ·  ")) : null,
     h("div", { class: "row", style: "margin-top:auto" },
@@ -269,7 +272,7 @@ function exerciseView() {
     h("nav", { class: "bar" },
       // Слева — проверить ответ сейчас (сколько бы слов ни было), справа — стереть последнее слово.
       done ? null : h("div", { class: "row" },
-        h("button", { class: "btn answer", disabled: !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "✓ Ответить"),
+        h("button", { class: "btn answer", disabled: !t.built.length, onclick: () => update((e, task) => e.answerNow(task)) }, "✓ Ответить"),
         h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫")),
       h("div", { class: "tabs" },
         h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),

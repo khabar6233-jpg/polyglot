@@ -57,6 +57,11 @@
     t = build("she didn't buy");
     assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
     assert(usedButtons(engine.undo(t)).filter(Boolean).length === 2, "⌫ возвращает слово в кнопки");
+    t = engine.answerNow(build("she didn't buy", false));
+    assert(isDone(t) && t.forced && t.errors === 1 && scoreOf(t) === 4 && answerText(t) === "She didn't buy a car last year.",
+      "«Ответить» на неполном ответе: ошибка и правильный ответ");
+    t = engine.answerNow(build("she didn't buy a car last year", false));
+    assert(t.solved && !t.forced && t.errors === 0, "«Ответить» на верном ответе: засчитано без ошибок");
     t = engine.reveal(build("she did not", false));
     assert(t.revealed && scoreOf(t) === 2, "«Показать ответ» — балл 2");
 

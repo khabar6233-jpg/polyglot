@@ -242,7 +242,8 @@ export const startsWith = (variant, prefix) =>
   variant.length >= prefix.length && prefix.every((w, i) => key(variant[i]) === key(w));
 export const same = (a, b) => a.length === b.length && startsWith(a, b);
 
-export const isDone = (t) => t.solved || t.revealed;
+/** solved — собрано верно, revealed — «Показать ответ», forced — «Ответить» с ошибкой (показан правильный). */
+export const isDone = (t) => Boolean(t.solved || t.revealed || t.forced);
 
 /** Какие кнопки уже использованы: слово ушло в строку ответа (по одной кнопке на каждое слово). */
 export function usedButtons(t) {
@@ -424,6 +425,27 @@ export class LessonEngine {
       missed: [...new Set([...task.missed, ...this.missedElements(task.item, target, match.inB)])],
       penalized: [...new Set([...task.penalized, ...penaltyKeys])],
       feedback: wrongIdx.length ? "wrong" : "missing",
+    };
+  }
+
+  /**
+   * Кнопка «Ответить»: проверяем ответ сейчас. Верно — засчитано. Неверно или не хватает слов —
+   * это ошибка, и сразу показываем правильный ответ (ближайший к собранному). Собранное хранится в attempt.
+   */
+  answerNow(task) {
+    if (isDone(task) || task.built.length === 0) return task;
+    const checked = this.check(task);
+    if (checked.solved) return checked;
+    const target = this.closestVariant(task);
+    return {
+      ...checked,
+      attempt: task.built,
+      built: target,
+      marked: target.map(() => false),
+      errors: Math.max(1, checked.errors),
+      cursor: null,
+      forced: true,
+      feedback: "none",
     };
   }
 

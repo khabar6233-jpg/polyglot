@@ -35,7 +35,9 @@ export function taskContext(task) {
   const answers = task.variants.slice(0, 6).map((v) => sentence(v, task.punctuation));
   const built = task.built.length ? task.built.join(" ") : "(пока ничего)";
   const wrong = [...new Set(task.wrongWords)];
-  const state = task.revealed ? "ученик нажал «Показать ответ»" : task.solved ? "задание решено" : "задание ещё не решено";
+  const state = task.revealed ? "ученик нажал «Показать ответ»"
+    : task.forced ? `ученик нажал «Ответить» с ошибкой (его ответ: ${task.attempt.join(" ")}), показан правильный ответ`
+    : task.solved ? "задание решено" : "задание ещё не решено";
   const note = task.item.note ? `\nСноска к заданию (ученик её видит): ${task.item.note}` : "";
   return `[Задание] Перевести на английский: «${task.item.ru}»${note}
 Время: ${TENSE[task.item.tense] || task.item.tense}; тип: ${TYPE[task.item.type] || task.item.type}
