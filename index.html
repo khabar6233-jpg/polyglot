@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Полиглот</title>
   <meta name="description" content="Тренировка английских предложений: простые времена.">
-  <meta name="theme-color" content="#ECEFF4">
+  <meta name="theme-color" content="#000000">
   <!-- Для iPhone: открывать как отдельное приложение с экрана «Домой» -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Полиглот">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
+  <!-- Чёрный фон сразу при запуске, ещё до загрузки приложения -->
+  <script>try { const s = JSON.parse(localStorage.getItem("polyglot.settings.v1") || "{}"); if (s.theme !== "light" && s.theme !== "system") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 </head>
 <body>
   <div id="app"><main class="page"><p class="muted">Загрузка…</p></main></div>
