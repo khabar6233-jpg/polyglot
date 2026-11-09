@@ -1,0 +1,5 @@
+{
+  "lessons": [
+    { "id": "lesson01", "number": 1, "title": "Простые времена", "file": "lesson01.json" }
+  ]
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверки урока</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #fff; color: #182132; }
+    .ok { color: #17834A; } .bad { color: #C8333A; } pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Проверки движка и уроков</h1>
+  <p>Откройте эту страницу, чтобы проверить все уроки: каждый ответ должен собираться из кнопок.</p>
+  <div id="out">Идёт проверка…</div>
+  <script type="module">
+    import { LessonEngine, Memory, key, same, isDone, scoreOf, expandGroups } from "./js/engine.js";
+
+    const problems = [];
+    const assert = (cond, msg) => { if (!cond) problems.push(msg); };
+
+    // ---- Движок на маленьком примере ----
+    const item = { id: "T1", ru: "Она не купила машину в прошлом году.", answers: ["She didn't buy {a|the} car last year."], tense: "past", type: "negative" };
+    const engine = new LessonEngine({ id: "test", number: 0, title: "Тест", verbs: [{ base: "buy", s: "buys", past: "bought" }], items: [item] });
+    const build = (words, auto = true) => words.split(" ").reduce((t, w) => engine.tap(t, w, auto), engine.newTask(item));
+
+    assert(JSON.stringify(expandGroups("all {the|} questions")) === JSON.stringify(["all the questions", "all  questions"]), "варианты в скобках");
+    assert(build("she didn't buy a car last year").solved, "сокращение didn't засчитывается");
+    assert(build("she did not buy the car last year").solved, "полная форма did not засчитывается");
+    let t = build("she didn't bought a car last year");
+    assert(!isDone(t) && t.errors === 1 && t.marked[2] && t.missed.includes("form:base"), "неверное слово отмечено красным");
+    t = engine.tap(engine.removeAt(t, 2), "buy", true);
+    assert(t.solved && scoreOf(t) === 4, "слово встаёт на место убранного, балл 4");
+    t = engine.check(build("she didn't bought a car last year", false));
+    assert(t.errors === 1 && engine.check(t).errors === 1, "повторный «Ввод» не добавляет ту же ошибку");
+    t = engine.reveal(build("she did not", false));
+    assert(t.revealed && scoreOf(t) === 2, "«Показать ответ» — балл 2");
+
+    let p = { elements: {}, sentences: {}, lessons: {} };
+    for (let i = 0; i < 10; i++) p = Memory.record(p, "test", build("she didn't buy a car last year"), engine.elementsOf(item));
+    assert(p.lessons.test.passed, "урок пройден: 10 предложений и балл ≥ 4.5");
+
+    // ---- Все уроки ----
+    const index = await (await fetch("lessons/index.json")).json();
+    let total = 0;
+    for (const ref of index.lessons) {
+      const lesson = await (await fetch(`lessons/${ref.file}`)).json();
+      const e = new LessonEngine(lesson);
+      const seenRu = new Map(), seenEn = new Map(), ids = new Set();
+      assert((lesson.theory || []).length, `${lesson.id}: нет правил`);
+      assert((lesson.hint || []).length, `${lesson.id}: нет подсказки`);
+      for (const it of lesson.items) {
+        total++;
+        const at = `${lesson.id}/${it.id}`;
+        assert(!ids.has(it.id), `${at}: повтор id`); ids.add(it.id);
+        const ru = it.ru.toLowerCase().trim();
+        assert(!seenRu.has(ru), `${at}: русское предложение уже есть в ${seenRu.get(ru)}`); seenRu.set(ru, it.id);
+        const q = it.type === "question";
+        assert(it.ru.trim().endsWith("?") === q, `${at}: знак в конце русского не совпадает с типом`);
+        const vars = e.variantsOf(it);
+        for (const v of vars) {
+          const s = v.map(key).join(" ");
+          assert(!seenEn.has(s) || seenEn.get(s) === it.id, `${at}: ответ «${s}» уже есть в ${seenEn.get(s)}`);
+          seenEn.set(s, it.id);
+        }
+        const task = e.newTask(it);
+        const traps = task.buttons.filter((b) => !vars.some((v) => v.some((w) => key(w) === key(b))));
+        assert(traps.length >= 4, `${at}: мало ловушек (${traps.length})`);
+        for (const v of vars) {
+          for (const auto of [true, false]) {
+            let x = task;
+            for (const w of v) {
+              const b = task.buttons.find((bb) => key(bb) === key(w));
+              if (!b) { problems.push(`${at}: нет кнопки «${w}»`); break; }
+              if (isDone(x)) {
+                if (!x.solved || x.errors || !vars.some((vv) => same(vv, x.built))) problems.push(`${at}: проверка раньше времени в «${v.join(" ")}»`);
+                break;
+              }
+              x = e.tap(x, b, auto);
+            }
+            if (!auto) x = e.check(x);
+            assert(x.solved && x.errors === 0, `${at}: вариант «${v.join(" ")}» не засчитан (auto=${auto})`);
+          }
+        }
+      }
+    }
+
+    const out = document.getElementById("out");
+    out.innerHTML = problems.length
+      ? `<p class="bad">Найдены проблемы: ${problems.length}</p><pre>${problems.join("\n")}</pre>`
+      : `<p class="ok">Всё в порядке. Проверено предложений: ${total}.</p>`;
+    document.title = problems.length ? "FAIL" : "OK";
+  </script>
+</body>
+</html>
