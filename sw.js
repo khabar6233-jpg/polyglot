@@ -1,10 +1,10 @@
-// Работа без интернета: приложение и уроки сохраняются на телефоне.
+﻿// Работа без интернета: приложение и уроки сохраняются на телефоне.
 // После обновления сайта поменяйте VERSION — тогда телефон скачает новые файлы.
-const VERSION = "polyglot-v14";
+const VERSION = "polyglot-v15";
 const FILES = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "js/app.js", "js/engine.js", "js/storage.js", "js/teacher.js",
-  "lessons/index.json", "lessons/lesson01.json",
+  "lessons/index.json", "lessons/lesson01.json", "lessons/lesson02.json",
   "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
 ];
 

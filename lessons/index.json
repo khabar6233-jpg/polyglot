@@ -1,5 +1,6 @@
 {
   "lessons": [
-    { "id": "lesson01", "number": 1, "title": "Простые времена", "file": "lesson01.json" }
+    { "id": "lesson01", "number": 1, "title": "Простые времена", "file": "lesson01.json" },
+    { "id": "lesson02", "number": 2, "title": "To be, want, like, in и at", "file": "lesson02.json" }
   ]
 }

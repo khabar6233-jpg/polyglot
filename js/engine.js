@@ -7,6 +7,11 @@ export const CONTRACTIONS = {
   "doesn't": ["does", "not"],
   "didn't": ["did", "not"],
   "won't": ["will", "not"],
+  "isn't": ["is", "not"],
+  "aren't": ["are", "not"],
+  "wasn't": ["was", "not"],
+  "weren't": ["were", "not"],
+  "wouldn't": ["would", "not"],
 };
 
 export const key = (w) => w.toLowerCase();
@@ -99,8 +104,13 @@ export function wordInfo(word, lesson, lexicon) {
 
 // ---------- Метки «что проверяется» ----------
 
-export const AUX = new Set(["do", "does", "did", "will", "don't", "doesn't", "didn't", "won't", "not"]);
-export const QUESTION_AUX = new Set(["do", "does", "did", "will"]);
+export const BE = new Set(["am", "is", "are", "was", "were"]);
+export const AUX = new Set([
+  "do", "does", "did", "will", "don't", "doesn't", "didn't", "won't", "not",
+  ...BE, "isn't", "aren't", "wasn't", "weren't", "would", "wouldn't",
+]);
+export const QUESTION_AUX = new Set(["do", "does", "did", "will", ...BE, "would"]);
+const DETERMINERS = new Set(["the", "a", "an", "my", "your", "his", "her", "our", "their", "this", "that", "these", "those"]);
 export const ARTICLES = new Set(["a", "an", "the"]);
 export const PREPOSITIONS = new Set([
   "in", "at", "on", "to", "for", "with", "from", "of", "by", "about", "near", "after", "before", "under",
@@ -184,6 +194,9 @@ const AUX_SWAPS = {
   do: ["does", "did"], does: ["do", "did"], did: ["does", "do"], will: ["do", "did"],
   "don't": ["doesn't", "didn't"], "doesn't": ["don't", "didn't"], "didn't": ["don't", "doesn't"],
   "won't": ["don't", "didn't"],
+  am: ["is", "are"], is: ["are", "am"], are: ["is", "am"], was: ["were", "is"], were: ["was", "are"],
+  "isn't": ["aren't", "wasn't"], "aren't": ["isn't", "weren't"], "wasn't": ["weren't", "isn't"],
+  "weren't": ["wasn't", "aren't"], would: ["will", "do"], "wouldn't": ["won't", "don't"],
 };
 const PREP_SWAPS = {
   in: ["at", "on"], at: ["in", "on"], on: ["in", "at"], to: ["at", "for"], for: ["to", "during"],
@@ -395,6 +408,14 @@ export class LessonEngine {
     const aux = key(v[0]);
     if (!QUESTION_AUX.has(aux)) return null;
     const rest = v.slice(1);
+    const lower = (list) => list.map((w, i) => (i === 0 && w !== "I" && !this.properNouns.has(w) ? w.toLowerCase() : w));
+    // to be: «Are you at home?» → «You are at home ?». Подлежащее — местоимение или «слово + существительное».
+    if (BE.has(aux)) {
+      const n = PRONOUNS.has(key(rest[0] || "")) ? 1
+        : DETERMINERS.has(key(rest[0] || "")) && !DETERMINERS.has(key(rest[1] || "")) && rest.length > 2 ? 2 : 0;
+      if (!n) return null;
+      return lower([...rest.slice(0, n), v[0], ...rest.slice(n)]);
+    }
     // Глагол — первое слово после подлежащего, которое есть в списке глаголов (often, usually пропускаем).
     const j = rest.findIndex((_, i) => i > 0 && verbAt(rest, i, this.lexicon) && key(rest[i]) === verbAt(rest, i, this.lexicon).base);
     if (j < 1) return null;
@@ -405,7 +426,7 @@ export class LessonEngine {
     if (aux === "do") verbPart = [rest[j]];
     else if (aux === "does") verbPart = [verb.s];
     else if (aux === "did") verbPart = [verb.past];
-    else verbPart = ["will", rest[j]];
+    else verbPart = [aux, rest[j]]; // will / would остаются: «You will come ?», «You would like tea ?»
     // Наречия частоты (often, usually) остаются перед глаголом: «You often go…».
     return [...subject, ...verbPart, ...after].map((w, i) => (i === 0 && w !== "I" && !this.properNouns.has(w) ? w.toLowerCase() : w));
   }

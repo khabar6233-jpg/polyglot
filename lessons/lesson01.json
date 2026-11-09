@@ -809,7 +809,8 @@
     "yesterday": "вчера",
     "you": "ты, вы; тебя, вас",
     "your": "твой, ваш",
-    "?": "знак вопроса: разговорный вопрос без do / does / did / will"
+    "?": "знак вопроса: разговорный вопрос без do / does / did / will",
+    "were": "был, были (to be в прошлом с you, we, they)"
   },
   "items": [
     {"id": "L1-001", "ru": "Она обычно ходит на работу пешком.", "answers": ["She usually walks to work."], "tense": "present", "type": "affirmative", "elements": ["form:-s", "word:usually", "order:adverb", "prep:to"], "traps": ["goes", "walking"]},

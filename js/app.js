@@ -18,6 +18,7 @@ import { Gemini, systemPrompt, studentMessage } from "./teacher.js";
 // ---------- Состояние ----------
 
 const S = {
+  lessons: [], // список уроков из lessons/index.json
   lesson: null,
   engine: null,
   task: null,
@@ -25,7 +26,7 @@ const S = {
   settings: loadSettings(),
   recorded: false,
   justPassed: false,
-  sheet: null, // "hint" | "more" — открытая шторка
+  sheet: null, // "hint" | "more" | "lessons" — открытая шторка
   layout: { key: null, cap: Infinity }, // сколько клеток со словами помещается на экране
 
   chat: [], // {fromStudent, text, shown}
@@ -37,8 +38,11 @@ const S = {
 const gemini = new Gemini();
 let lastFailedChecks = 0;
 
-const lessonProgress = () =>
-  (S.lesson && S.progress.lessons[S.lesson.id]) || { scores: [], solved: 0, passed: false };
+const progressOf = (id) => S.progress.lessons[id] || { scores: [], solved: 0, passed: false };
+const lessonProgress = () => progressOf(S.lesson?.id);
+
+/** Урок открыт, если это первый урок, пройден предыдущий или включено «Открыть все уроки». */
+const isUnlocked = (i) => i === 0 || !!S.settings.openAll || progressOf(S.lessons[i - 1]?.id).passed;
 
 // ---------- Маленький помощник для создания элементов ----------
 
@@ -193,7 +197,8 @@ function header() {
   const left = Memory.PASS_MIN_SOLVED - lp.scores.length;
   return h("header", { class: "head" },
     h("div", { class: "row" },
-      h("div", { class: "title grow" }, `Урок ${S.lesson.number}`, h("span", {}, S.lesson.title)),
+      h("button", { class: "title grow", onclick: () => { S.sheet = "lessons"; render(); } },
+        `Урок ${S.lesson.number} ▾`, h("span", {}, S.lesson.title)),
       h("div", { class: "score" }, avg.toFixed(1), h("span", {}, " / 5"))),
     h("div", { class: "meter" }, h("i", { style: `width:${(avg / 5) * 100}%` }), h("span", { class: "goal" })),
     h("div", { class: "meter-row" },
@@ -346,6 +351,38 @@ function moreSheet() {
         h("button", { class: "btn", onclick: () => go("theory") }, "Правила урока"),
         h("button", { class: "btn", onclick: () => go("hard") }, "Мои трудные слова"),
         h("button", { class: "btn", onclick: () => go("settings") }, "Настройки"))),
+  ];
+}
+
+/** Шторка выбора урока. Следующий урок открывается, когда средний балл предыдущего ≥ 4.5. */
+function lessonsSheet() {
+  const close = () => { S.sheet = null; render(); };
+  return [
+    h("div", { class: "veil", onclick: close }),
+    h("div", { class: "sheet", role: "dialog", "aria-label": "Уроки" },
+      h("div", { class: "inner" },
+        h("div", { class: "topbar" }, h("h1", {}, "Уроки"), h("button", { class: "link", onclick: close }, "Закрыть")),
+        S.lessons.map((ref, i) => {
+          const lp = progressOf(ref.id);
+          const open = isUnlocked(i);
+          const current = ref.id === S.lesson.id;
+          const status = !open ? "🔒 Откроется после урока " + S.lessons[i - 1].number
+            : lp.passed ? `Пройден · ${average(lp.scores).toFixed(1)}`
+              : lp.scores.length ? `Балл ${average(lp.scores).toFixed(1)} · решено ${lp.solved}` : "Ещё не начат";
+          return h("button", {
+            class: "btn lesson-pick" + (current ? " current" : ""), disabled: !open,
+            onclick: () => { S.sheet = null; if (!current) openLesson(ref); else render(); },
+          },
+          h("span", { class: "grow" }, h("b", {}, `Урок ${ref.number}. `), ref.title),
+          h("span", { class: "muted small" }, status));
+        }),
+        h("label", { class: "switch-row" },
+          h("div", { class: "grow" },
+            h("div", { style: "font-weight:650" }, "Открыть все уроки"),
+            h("div", { class: "muted small" }, "Можно заниматься любым уроком, не дожидаясь балла 4.5")),
+          h("span", { class: "switch" },
+            h("input", { type: "checkbox", checked: !!S.settings.openAll, onchange: (e) => { S.settings = { ...S.settings, openAll: e.target.checked }; saveSettings(S.settings); render(); } }),
+            h("span"))))),
   ];
 }
 
@@ -579,6 +616,7 @@ function render() {
   const nodes = [views[view]()];
   if (view === "exercise" && S.sheet === "hint") nodes.push(...hintSheet());
   if (view === "exercise" && S.sheet === "more") nodes.push(...moreSheet());
+  if (view === "exercise" && S.sheet === "lessons") nodes.push(...lessonsSheet());
   app.replaceChildren(...nodes);
 
   const newAsk = document.getElementById("ask");
@@ -676,18 +714,38 @@ window.addEventListener("hashchange", () => { S.sheet = null; render(); });
 
 // ---------- Запуск ----------
 
+/** Загружает урок и даёт первое предложение. Выбранный урок запоминается. */
+async function openLesson(ref, draw = true) {
+  try {
+    const lesson = await (await fetch(`lessons/${ref.file}`, { cache: "no-cache" })).json();
+    S.lesson = lesson;
+    S.engine = new LessonEngine(lesson);
+    S.task = null;
+    S.layout = { key: null, cap: Infinity };
+    nextTask();
+    S.settings = { ...S.settings, lessonId: ref.id };
+    saveSettings(S.settings);
+  } catch (e) {
+    if (!draw) throw e;
+    alert("Не удалось загрузить урок: " + e.message);
+  }
+  if (draw) render();
+}
+
 async function start() {
   applyTheme();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
   askPersistentStorage();
   try {
     const index = await (await fetch("lessons/index.json", { cache: "no-cache" })).json();
-    const ref = index.lessons[0];
-    S.lesson = await (await fetch(`lessons/${ref.file}`, { cache: "no-cache" })).json();
-    S.engine = new LessonEngine(S.lesson);
-    nextTask();
-    // Для проверки раскладки: ?item=L1-044 открывает конкретное предложение.
-    const forced = S.lesson.items.find((it) => it.id === new URLSearchParams(location.search).get("item"));
+    S.lessons = index.lessons;
+    // Для проверки раскладки: ?item=L1-044 открывает конкретное предложение (и его урок).
+    const itemId = new URLSearchParams(location.search).get("item");
+    const byItem = itemId && S.lessons.find((l) => itemId.startsWith("L" + l.number + "-"));
+    const saved = S.lessons.findIndex((l) => l.id === S.settings.lessonId);
+    const ref = byItem || (saved >= 0 && isUnlocked(saved) ? S.lessons[saved] : S.lessons[0]);
+    await openLesson(ref, false);
+    const forced = S.lesson.items.find((it) => it.id === itemId);
     if (forced) S.task = S.engine.newTask(forced);
   } catch (e) {
     S.error = "Не удалось загрузить урок: " + e.message;

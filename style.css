@@ -75,7 +75,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 .head { flex: none; }
-.head .title { font-weight: 700; font-size: calc(19px * var(--k)); }
+.head .title { font-weight: 700; font-size: calc(19px * var(--k)); background: none; border: 0; padding: 0; text-align: left; color: inherit; }
+.lesson-pick { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; font-weight: 500; }
+.lesson-pick.current { border-color: var(--accent); }
 .head .title span { font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 6px; }
 .head .score { font-weight: 700; font-size: calc(19px * var(--k)); font-variant-numeric: tabular-nums; }
 .head .score span { font-weight: 500; font-size: 13px; color: var(--muted); }
