@@ -228,10 +228,7 @@ function taskCard() {
     // Строка состояния всегда одной высоты, чтобы кнопки слов не прыгали.
     const msg = t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на строку, чтобы стереть последнее слово."
       : t.feedback === "missing" ? "Не хватает слов." : null;
-    card.append(h("div", { class: "status" },
-      msg ? h("span", { class: "msg-bad" }, msg)
-        : h("span", { class: "errors" + (t.errors ? " bad" : "") }, `Ошибок: ${t.errors}`),
-      h("button", { class: "link", onclick: () => update((e, task) => e.reveal(task)) }, "Показать ответ")));
+    card.append(h("div", { class: "status" }, msg ? h("span", { class: "msg-bad" }, msg) : null));
   }
   return card;
 }
@@ -276,12 +273,12 @@ function exerciseView() {
         h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫")),
       h("div", { class: "tabs" },
         h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),
-        h("button", { onclick: () => go("theory") }, "Правила"),
+        h("button", { disabled: done, onclick: () => update((e, task) => e.reveal(task)) }, "Показать ответ"),
         h("button", { class: "accent", onclick: () => go("teacher") }, "Учитель"),
         h("button", { onclick: () => { S.sheet = "more"; render(); } }, "Ещё"))));
 }
 
-/** Шторка «Ещё»: ползунок «Ввод», трудные слова, настройки. */
+/** Шторка «Ещё»: ползунок «Ввод», правила урока, трудные слова, настройки. */
 function moreSheet() {
   const enter = S.progress.enterMode;
   const close = () => { S.sheet = null; render(); };
@@ -298,6 +295,7 @@ function moreSheet() {
           h("span", { class: "switch" },
             h("input", { type: "checkbox", checked: enter, onchange: (e) => { S.progress = { ...S.progress, enterMode: e.target.checked }; persist(); render(); } }),
             h("span"))),
+        h("button", { class: "btn", onclick: () => go("theory") }, "Правила урока"),
         h("button", { class: "btn", onclick: () => go("hard") }, "Мои трудные слова"),
         h("button", { class: "btn", onclick: () => go("settings") }, "Настройки"))),
   ];

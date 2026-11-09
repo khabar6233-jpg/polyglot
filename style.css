@@ -89,29 +89,25 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 }
 .ru { font-size: calc(21px * var(--k)); font-weight: 650; line-height: 1.25; margin: 0; }
 .note { font-size: calc(14px * var(--k)); color: var(--muted); }
+/* Строка ответа: без рамки и фона — слова просто появляются одно за другим, как текст. */
 .built {
-  min-height: calc(96px * var(--k)); border-radius: 12px; background: var(--surface2); border: 1px solid var(--line);
-  padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+  min-height: calc(84px * var(--k)); padding: 2px 0;
+  display: flex; flex-wrap: wrap; column-gap: calc(7px * var(--k)); row-gap: 2px; align-content: flex-start;
 }
-.built.done { background: var(--ok-soft); border-color: var(--ok); }
-.built.fixed { border-color: var(--mid); }
 .result-head.bad { color: var(--bad); }
 .attempt { font-size: calc(15px * var(--k)); color: var(--muted); }
 .attempt s { color: var(--bad); }
 .built .ph { color: var(--muted); font-size: calc(15px * var(--k)); padding: 2px 0; }
-.chip {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 2px 9px;
-  font-size: calc(19px * var(--k)); line-height: 1.35;
-}
-.chip.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.chip { font-size: calc(22px * var(--k)); line-height: 1.35; font-weight: 500; }
+.chip.wrong { color: var(--bad); text-decoration: underline wavy var(--bad); text-underline-offset: 4px; }
+/* Собрано верно — слова зелёные; показан правильный ответ после ошибки — оранжевые. */
+.built.done .chip { color: var(--ok); }
+.built.fixed .chip { color: var(--mid); }
 .built.erasable { cursor: pointer; }
-.built.erasable:active { filter: brightness(.97); }
 .caret { width: 3px; height: calc(28px * var(--k)); border-radius: 2px; background: var(--accent); align-self: center; }
 /* Строка состояния: всегда одной высоты, чтобы кнопки слов не прыгали. */
-.status { display: flex; align-items: center; gap: 8px; min-height: calc(40px * var(--k)); font-size: calc(14px * var(--k)); }
+.status { display: flex; align-items: center; min-height: calc(36px * var(--k)); font-size: calc(14px * var(--k)); }
 .status .msg-bad { color: var(--bad); flex: 1; line-height: 1.25; }
-.status .errors { color: var(--muted); flex: 1; }
-.status .errors.bad { color: var(--bad); }
 .link { background: none; border: none; color: var(--accent); font-size: 16px; padding: 8px 0; font-weight: 600; white-space: nowrap; }
 .result-head { font-weight: 650; font-size: calc(17px * var(--k)); }
 .result-head.ok { color: var(--ok); }
@@ -121,7 +117,12 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
 /* Кнопки слов: все одинаковые; область занимает оставшееся место */
-.tiles { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: calc(7px * var(--k)); align-content: flex-start; overflow: hidden; }
+/* Ряды кнопок ровные: каждая кнопка чуть растягивается, чтобы ряд заполнял всю ширину. */
+.tiles {
+  flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start;
+  gap: calc(8px * var(--k)); overflow: hidden; padding-top: 2px;
+}
+.tiles .tile { flex: 1 0 auto; }
 .tile {
   min-height: calc(46px * var(--k)); min-width: calc(44px * var(--k));
   padding: calc(7px * var(--k)) calc(13px * var(--k)); border-radius: 11px;
@@ -129,8 +130,12 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
   transition: transform .06s;
 }
 .tile:active { transform: translateY(1px); }
-/* Использованное слово «ушло» в строку ответа: кнопки не видно, место сохраняется. */
-.tile.used { visibility: hidden; }
+/* Использованное слово «ушло» в строку ответа: на его месте едва заметная пунктирная ячейка,
+   чтобы ряды оставались ровными и остальные кнопки не сдвигались. */
+.tiles .tile.used {
+  color: transparent; background: transparent; border: 1px dashed var(--line);
+  box-shadow: none; pointer-events: none;
+}
 /* Скромные цвета: зелёный — проверить ответ, красный — стереть слово. */
 .btn.answer { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 .btn.erase { background: var(--bad-soft); color: var(--bad); border-color: transparent; font-size: 24px; line-height: 1; }
@@ -169,6 +174,7 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
   font-size: 13px; font-weight: 600; color: var(--ink); padding: 4px 2px; line-height: 1.15;
 }
 .tabs button.accent { background: var(--accent-soft); }
+.tabs button:disabled { opacity: .45; }
 
 /* Переключатель «Ввод» */
 .switch-row { background: var(--surface); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
