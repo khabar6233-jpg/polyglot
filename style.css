@@ -25,87 +25,121 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); }
-body {
-  font-family: var(--font); font-size: 17px; line-height: 1.45;
-  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+/* Страница целиком никогда не прокручивается и не «пружинит»: всё помещается в экран. */
+html, body {
+  margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+  background: var(--bg); color: var(--ink);
 }
+body {
+  position: fixed; inset: 0;
+  font-family: var(--font); font-size: 17px; line-height: 1.4;
+  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+#app { height: 100%; }
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.page {
-  max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
-  padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px)
-           calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
+/* Экран: ровно высота окна. --k — масштаб, подгоняется так, чтобы всё влезло. */
+.screen {
+  --k: 1;
+  height: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column;
+  gap: calc(10px * var(--k));
+  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 12px)
+           calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 12px);
 }
-.row { display: flex; gap: 10px; align-items: center; }
+/* Длинные экраны (правила, настройки…) прокручиваются только внутри своей области. */
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
+.row { display: flex; gap: 8px; align-items: center; }
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
 
 /* Шапка и балл */
 .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-h1 { font-size: 24px; margin: 0; line-height: 1.2; }
-.score { text-align: right; }
-.score b { display: block; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
-.score span { font-size: 12px; color: var(--muted); }
-.meter { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
+h1 { font-size: 22px; margin: 0; line-height: 1.2; }
+.head { flex: none; }
+.head .title { font-weight: 700; font-size: calc(19px * var(--k)); }
+.head .title span { font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 6px; }
+.head .score { font-weight: 700; font-size: calc(19px * var(--k)); font-variant-numeric: tabular-nums; }
+.head .score span { font-weight: 500; font-size: 13px; color: var(--muted); }
+.meter { position: relative; height: 5px; border-radius: 3px; background: var(--line); margin-top: 6px; }
 .meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); transition: width .4s; }
 .meter .goal { position: absolute; top: -3px; bottom: -3px; left: 90%; width: 2px; background: var(--ink); opacity: .55; }
-.meter-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.meter-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 4px; }
 .meter-row .ok { color: var(--ok); }
 
 /* Карточка задания */
-.card { background: var(--surface); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-.ru { font-size: 23px; font-weight: 650; line-height: 1.3; margin: 0; }
-.note { font-size: 15px; color: var(--muted); margin-top: -6px; }
+.card {
+  flex: none; background: var(--surface); border-radius: 16px;
+  padding: calc(12px * var(--k)) 14px; display: flex; flex-direction: column; gap: calc(8px * var(--k));
+}
+.ru { font-size: calc(21px * var(--k)); font-weight: 650; line-height: 1.25; margin: 0; }
+.note { font-size: calc(14px * var(--k)); color: var(--muted); }
 .built {
-  min-height: 148px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--line);
-  padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+  min-height: calc(96px * var(--k)); border-radius: 12px; background: var(--surface2); border: 1px solid var(--line);
+  padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
 }
 .built.done { background: var(--ok-soft); border-color: var(--ok); }
-.built .ph { color: var(--muted); padding: 4px 0; }
+.built .ph { color: var(--muted); font-size: calc(15px * var(--k)); padding: 2px 0; }
 .chip {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px;
-  font-size: 20px; line-height: 1.35;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 2px 9px;
+  font-size: calc(19px * var(--k)); line-height: 1.35;
 }
 .chip.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
-.caret { width: 3px; height: 30px; border-radius: 2px; background: var(--accent); align-self: center; }
-.feedback { color: var(--bad); font-size: 15px; min-height: 2.9em; }
-.errors { font-size: 15px; color: var(--muted); }
-.errors.bad { color: var(--bad); }
-.link { background: none; border: none; color: var(--accent); font-size: 16px; padding: 8px 0; font-weight: 550; }
-.result-head { font-weight: 650; font-size: 17px; }
+.caret { width: 3px; height: calc(28px * var(--k)); border-radius: 2px; background: var(--accent); align-self: center; }
+/* Строка состояния: всегда одной высоты, чтобы кнопки слов не прыгали. */
+.status { display: flex; align-items: center; gap: 8px; min-height: calc(40px * var(--k)); font-size: calc(14px * var(--k)); }
+.status .msg-bad { color: var(--bad); flex: 1; line-height: 1.25; }
+.status .errors { color: var(--muted); flex: 1; }
+.status .errors.bad { color: var(--bad); }
+.link { background: none; border: none; color: var(--accent); font-size: 16px; padding: 8px 0; font-weight: 600; white-space: nowrap; }
+.result-head { font-weight: 650; font-size: calc(17px * var(--k)); }
 .result-head.ok { color: var(--ok); }
 .result-head.mid { color: var(--mid); }
 .pass { color: var(--ok); font-weight: 650; }
 .shake { animation: shake .35s; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
-/* Кнопки слов: все одинаковые */
-.tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Кнопки слов: все одинаковые; область занимает оставшееся место */
+.tiles { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: calc(7px * var(--k)); align-content: flex-start; overflow: hidden; }
 .tile {
-  min-height: 52px; min-width: 52px; padding: 10px 16px; border-radius: 12px;
-  background: var(--surface); border: 1px solid var(--line); font-size: 19px; font-weight: 500;
+  min-height: calc(46px * var(--k)); min-width: calc(44px * var(--k));
+  padding: calc(7px * var(--k)) calc(13px * var(--k)); border-radius: 11px;
+  background: var(--surface); border: 1px solid var(--line); font-size: calc(18px * var(--k)); font-weight: 500;
   transition: transform .06s;
 }
 .tile:active { transform: translateY(1px); }
-.tile:disabled { opacity: .4; }
+/* Когда ответ собран: результат и кнопки «Озвучить» / «Дальше» вместо кнопок слов */
+.done-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.done-panel .others { font-size: calc(14px * var(--k)); color: var(--muted); }
 
 /* Обычные кнопки */
 .btn {
-  min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
-  font-size: 16px; font-weight: 550; padding: 10px 14px; flex: 1;
+  min-height: calc(48px * var(--k)); border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  font-size: 16px; font-weight: 600; padding: 8px 12px; flex: 1;
 }
 .btn:disabled { opacity: .45; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn.soft { background: var(--accent-soft); border-color: transparent; }
 .btn.danger { color: var(--bad); }
-.links { display: flex; justify-content: space-around; }
+.btn.big { min-height: 56px; font-size: 18px; }
+.screen > .btn { flex: none; }
+
+/* Нижняя панель: главные действия и разделы */
+.bar { flex: none; display: flex; flex-direction: column; gap: calc(8px * var(--k)); }
+.tabs { display: flex; gap: 6px; }
+.tabs button {
+  flex: 1; min-height: calc(44px * var(--k)); border-radius: 11px; border: none; background: var(--surface);
+  font-size: 13px; font-weight: 600; color: var(--ink); padding: 4px 2px; line-height: 1.15;
+}
+.tabs button.accent { background: var(--accent-soft); }
 
 /* Переключатель «Ввод» */
-.switch-row { background: var(--surface); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+.switch-row { background: var(--surface); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
 .switch { position: relative; width: 52px; height: 32px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .switch span { position: absolute; inset: 0; border-radius: 16px; background: var(--line); transition: background .2s; }
@@ -117,12 +151,13 @@ h1 { font-size: 24px; margin: 0; line-height: 1.2; }
 .switch input:checked + span::after { transform: translateX(20px); }
 
 /* Экраны со списком: правила, трудные слова, настройки */
-.topbar { display: flex; align-items: center; gap: 8px; }
+.topbar { flex: none; display: flex; align-items: center; gap: 8px; }
 .topbar h1 { flex: 1; }
 .panel { background: var(--surface); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .toc a { display: block; padding: 11px 2px; color: var(--accent); text-decoration: none; font-weight: 550; border-top: 1px solid var(--line); }
 .toc a:first-of-type { border-top: none; }
-.theory h2 { font-size: 21px; margin: 18px 0 4px; scroll-margin-top: 12px; }
+.theory { -webkit-user-select: text; user-select: text; }
+.theory h2 { font-size: 21px; margin: 18px 0 4px; scroll-margin-top: 8px; }
 .theory h3 { font-size: 17px; margin: 8px 0 0; }
 .theory p { margin: 0; }
 .theory ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
@@ -140,9 +175,9 @@ h1 { font-size: 24px; margin: 0; line-height: 1.2; }
 .tt .who { display: block; font-size: 12px; color: var(--muted); line-height: 1.25; margin-bottom: 2px; }
 .tt .tense { font-size: 13px; font-weight: 650; border-left: 4px solid currentColor; padding-left: 8px; }
 
-.hard-item { background: var(--surface); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
-.hard-item .bar { height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
-.hard-item .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bad); }
+.hard-item { background: var(--surface); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; flex: none; }
+.hard-item .bar-line { height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+.hard-item .bar-line i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bad); }
 
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: 13px; color: var(--muted); }
@@ -157,21 +192,21 @@ h1 { font-size: 24px; margin: 0; line-height: 1.2; }
 
 /* Учитель */
 .chat { display: flex; flex-direction: column; gap: 10px; }
-.msg { max-width: 88%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; }
+.msg { max-width: 88%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
 .msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); }
 .msg.t { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
-.quick { display: flex; flex-wrap: wrap; gap: 8px; }
-.quick button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 14px; font-size: 15px; }
-.ask { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0 calc(env(safe-area-inset-bottom) + 6px); display: flex; gap: 8px; }
-.ask textarea { flex: 1; resize: none; min-height: 48px; max-height: 120px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: 12px; font-size: 16px; }
+.quick { flex: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.quick button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 12px; font-size: 14px; }
+.ask { flex: none; display: flex; gap: 8px; }
+.ask textarea { flex: 1; resize: none; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: 12px; font-size: 16px; }
 .ask .btn { flex: 0 0 auto; }
 
-/* Шторка «Подсказка» */
+/* Шторки «Подсказка» и «Ещё» */
 .veil { position: fixed; inset: 0; background: rgba(10, 14, 22, .45); z-index: 20; }
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 88vh; overflow-y: auto;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 88%; overflow-y: auto; overscroll-behavior: contain;
   background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25);
-  padding: 14px calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
+  padding: 14px calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 20px) calc(env(safe-area-inset-left) + 16px);
 }
 .sheet .inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 

@@ -18,7 +18,8 @@ const S = {
   settings: loadSettings(),
   recorded: false,
   justPassed: false,
-  hintOpen: false,
+  sheet: null, // "hint" | "more" — открытая шторка
+
   chat: [], // {fromStudent, text, shown}
   teacherBusy: false,
   teacherError: null,
@@ -180,18 +181,15 @@ function header() {
   const lp = lessonProgress();
   const avg = average(lp.scores);
   const left = Memory.PASS_MIN_SOLVED - lp.scores.length;
-  return h("div", {},
+  return h("header", { class: "head" },
     h("div", { class: "row" },
-      h("div", { class: "grow" },
-        h("div", { class: "eyebrow" }, S.lesson.title),
-        h("h1", {}, `Урок ${S.lesson.number}`)),
-      h("div", { class: "score" }, h("b", {}, avg.toFixed(1)), h("span", {}, "балл из 5"))),
-    h("div", { class: "meter", style: "margin-top:10px" },
-      h("i", { style: `width:${(avg / 5) * 100}%` }), h("span", { class: "goal" })),
+      h("div", { class: "title grow" }, `Урок ${S.lesson.number}`, h("span", {}, S.lesson.title)),
+      h("div", { class: "score" }, avg.toFixed(1), h("span", {}, " / 5"))),
+    h("div", { class: "meter" }, h("i", { style: `width:${(avg / 5) * 100}%` }), h("span", { class: "goal" })),
     h("div", { class: "meter-row" },
       h("span", {}, `Решено: ${lp.solved}`),
       lp.passed ? h("span", { class: "ok" }, "Цель достигнута, следующий урок открыт")
-        : h("span", {}, left > 0 ? `Цель: 4.5 (ещё минимум ${left} предл.)` : "Цель: 4.5")));
+        : h("span", {}, left > 0 ? `Цель 4.5 · ещё минимум ${left}` : "Цель 4.5")));
 }
 
 function taskCard() {
@@ -210,58 +208,75 @@ function taskCard() {
   });
 
   const card = h("section", { class: "card" },
-    h("div", {}, h("p", { class: "ru" }, t.item.ru), t.item.note ? h("div", { class: "note", style: "margin-top:6px" }, "* " + t.item.note) : null),
+    h("div", {}, h("p", { class: "ru" }, t.item.ru), t.item.note ? h("div", { class: "note" }, "* " + t.item.note) : null),
     built);
 
   if (!done) {
-    // Место под подсказку есть всегда, чтобы кнопки слов не прыгали.
-    card.append(h("div", { class: "feedback" },
-      t.feedback === "wrong" ? "Красные слова — неверные или лишние. Нажмите на слово, чтобы убрать его."
-        : t.feedback === "missing" ? "Не хватает слов." : ""));
-    card.append(h("div", { class: "row" },
-      h("span", { class: "errors grow" + (t.errors ? " bad" : "") }, `Ошибок: ${t.errors}`),
+    // Строка состояния всегда одной высоты, чтобы кнопки слов не прыгали.
+    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на слово, чтобы убрать."
+      : t.feedback === "missing" ? "Не хватает слов." : null;
+    card.append(h("div", { class: "status" },
+      msg ? h("span", { class: "msg-bad" }, msg)
+        : h("span", { class: "errors" + (t.errors ? " bad" : "") }, `Ошибок: ${t.errors}`),
       h("button", { class: "link", onclick: () => update((e, task) => e.reveal(task)) }, "Показать ответ")));
-  } else {
-    const head = t.revealed ? ["Ответ показан · балл 2", "mid"]
-      : t.errors === 0 ? ["Верно! · балл 5", "ok"] : [`Получилось, ошибок: ${t.errors} · балл ${scoreOf(t)}`, "mid"];
-    const others = otherAnswers(t);
-    card.append(h("div", {},
-      h("div", { class: `result-head ${head[1]}` }, head[0]),
-      others.length ? h("div", { class: "muted small" }, "Тоже правильно: " + others.slice(0, 4).join("  ·  ")) : null,
-      S.justPassed ? h("div", { class: "pass" }, "Цель урока достигнута: средний балл 4.5! Следующий урок открыт.") : null));
-    card.append(h("div", { class: "row" },
-      h("button", { class: "btn", onclick: speak }, "Озвучить"),
-      h("button", { class: "btn primary", id: "next", onclick: () => { nextTask(); render(); window.scrollTo(0, 0); } }, "Дальше")));
   }
   return card;
+}
+
+/** Ответ собран: итог и «Озвучить» / «Дальше» на месте кнопок слов. */
+function donePanel() {
+  const t = S.task;
+  const head = t.revealed ? ["Ответ показан · балл 2", "mid"]
+    : t.errors === 0 ? ["Верно! · балл 5", "ok"] : [`Получилось, ошибок: ${t.errors} · балл ${scoreOf(t)}`, "mid"];
+  const others = otherAnswers(t);
+  return h("div", { class: "done-panel" },
+    h("div", { class: `result-head ${head[1]}` }, head[0]),
+    S.justPassed ? h("div", { class: "pass" }, "Цель урока достигнута: средний балл 4.5! Следующий урок открыт.") : null,
+    others.length ? h("div", { class: "others" }, "Тоже правильно: " + others.slice(0, 3).join("  ·  ")) : null,
+    h("div", { class: "row", style: "margin-top:auto" },
+      h("button", { class: "btn big", onclick: speak }, "Озвучить"),
+      h("button", { class: "btn big primary", id: "next", onclick: () => { nextTask(); render(); } }, "Дальше")));
 }
 
 function exerciseView() {
   const t = S.task;
   const done = isDone(t);
   const enter = S.progress.enterMode;
-  return h("main", { class: "page" },
+  return h("main", { class: "screen exercise" },
     header(),
     taskCard(),
-    h("div", { class: "tiles" }, t.buttons.map((w) =>
-      h("button", { class: "tile", disabled: done, onclick: () => update((e, task) => e.tap(task, w, !enter)) }, w))),
-    h("div", { class: "row" },
-      h("button", { class: "btn", disabled: done || !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "Ой, ошибся"),
-      enter ? h("button", { class: "btn primary", disabled: done || !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "Ввод") : null),
-    h("div", { class: "row" },
-      h("button", { class: "btn", onclick: () => { S.hintOpen = true; render(); } }, "Подсказка"),
-      h("button", { class: "btn", onclick: () => go("theory") }, "Правила урока")),
-    h("button", { class: "btn soft", onclick: () => go("teacher") }, "Спросить учителя"),
-    h("label", { class: "switch-row" },
-      h("div", { class: "grow" },
-        h("div", { style: "font-weight:650" }, "Ввод"),
-        h("div", { class: "muted small" }, enter ? "Проверка по кнопке «Ввод»" : "Проверка сразу после последнего слова")),
-      h("span", { class: "switch" },
-        h("input", { type: "checkbox", checked: enter, onchange: (e) => { S.progress = { ...S.progress, enterMode: e.target.checked }; persist(); render(); } }),
-        h("span"))),
-    h("div", { class: "links" },
-      h("button", { class: "link", onclick: () => go("hard") }, "Мои трудные слова"),
-      h("button", { class: "link", onclick: () => go("settings") }, "Настройки")));
+    done ? donePanel() : h("div", { class: "tiles" }, t.buttons.map((w) =>
+      h("button", { class: "tile", onclick: () => update((e, task) => e.tap(task, w, !enter)) }, w))),
+    h("nav", { class: "bar" },
+      done ? null : h("div", { class: "row" },
+        h("button", { class: "btn", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "Ой, ошибся"),
+        enter ? h("button", { class: "btn primary", disabled: !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "Ввод") : null),
+      h("div", { class: "tabs" },
+        h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),
+        h("button", { onclick: () => go("theory") }, "Правила"),
+        h("button", { class: "accent", onclick: () => go("teacher") }, "Учитель"),
+        h("button", { onclick: () => { S.sheet = "more"; render(); } }, "Ещё"))));
+}
+
+/** Шторка «Ещё»: ползунок «Ввод», трудные слова, настройки. */
+function moreSheet() {
+  const enter = S.progress.enterMode;
+  const close = () => { S.sheet = null; render(); };
+  return [
+    h("div", { class: "veil", onclick: close }),
+    h("div", { class: "sheet", role: "dialog", "aria-label": "Ещё" },
+      h("div", { class: "inner" },
+        h("div", { class: "topbar" }, h("h1", {}, "Ещё"), h("button", { class: "link", onclick: close }, "Закрыть")),
+        h("label", { class: "switch-row" },
+          h("div", { class: "grow" },
+            h("div", { style: "font-weight:650" }, "Ввод"),
+            h("div", { class: "muted small" }, enter ? "Проверка по кнопке «Ввод»" : "Проверка сразу после последнего слова")),
+          h("span", { class: "switch" },
+            h("input", { type: "checkbox", checked: enter, onchange: (e) => { S.progress = { ...S.progress, enterMode: e.target.checked }; persist(); render(); } }),
+            h("span"))),
+        h("button", { class: "btn", onclick: () => go("hard") }, "Мои трудные слова"),
+        h("button", { class: "btn", onclick: () => go("settings") }, "Настройки"))),
+  ];
 }
 
 // ---------- Правила и подсказка ----------
@@ -304,24 +319,26 @@ function topbar(title, back = "") {
 function theoryView() {
   const blocks = S.lesson.theory || [];
   const sections = blocks.map((b, i) => [b, i]).filter(([b]) => b.type === "h2");
-  return h("main", { class: "page" },
+  return h("main", { class: "screen" },
     topbar("Правила урока"),
-    h("nav", { class: "panel toc" },
-      h("div", { class: "eyebrow" }, "Содержание"),
-      sections.map(([b, i], n) => h("a", {
-        href: `#theory`,
-        onclick: (e) => { e.preventDefault(); document.getElementById(`sec-${i}`)?.scrollIntoView({ behavior: "smooth" }); },
-      }, `${n + 1}. ${b.text}`))),
-    h("article", { class: "theory" }, blocks.map((b, i) => theoryBlock(b, `sec-${i}`))));
+    h("div", { class: "scroll" },
+      h("nav", { class: "panel toc" },
+        h("div", { class: "eyebrow" }, "Содержание"),
+        sections.map(([b, i], n) => h("a", {
+          href: `#theory`,
+          onclick: (e) => { e.preventDefault(); document.getElementById(`sec-${i}`)?.scrollIntoView({ behavior: "smooth" }); },
+        }, `${n + 1}. ${b.text}`))),
+      h("article", { class: "theory" }, blocks.map((b, i) => theoryBlock(b, `sec-${i}`)))));
 }
 
 function hintSheet() {
+  const close = () => { S.sheet = null; render(); };
   return [
-    h("div", { class: "veil", onclick: () => { S.hintOpen = false; render(); } }),
+    h("div", { class: "veil", onclick: close }),
     h("div", { class: "sheet", role: "dialog", "aria-label": "Подсказка" },
       h("div", { class: "inner theory" },
         h("div", { class: "topbar" }, h("h1", {}, "Таблица времён"),
-          h("button", { class: "link", onclick: () => { S.hintOpen = false; render(); } }, "Закрыть")),
+          h("button", { class: "link", onclick: close }, "Закрыть")),
         (S.lesson.hint || []).map((b) => theoryBlock(b)))),
   ];
 }
@@ -351,17 +368,18 @@ function hardView() {
   const list = Object.entries(S.progress.elements)
     .filter(([, s]) => s.errors > 0)
     .sort(([ka, a], [kb, b]) => b.weight - a.weight || (/^(tense|type):/.test(ka) ? 1 : 0) - (/^(tense|type):/.test(kb) ? 1 : 0));
-  return h("main", { class: "page" },
+  return h("main", { class: "screen" },
     topbar("Мои трудные слова"),
-    h("p", { class: "muted", style: "margin:0" }, "Здесь то, в чём вы чаще всего ошибаетесь. Предложения с этими словами будут попадаться чаще, пока вы не начнёте отвечать без ошибок."),
-    list.length ? list.map(([k, s]) => {
-      const [title, sub] = describe(k);
-      return h("div", { class: "hard-item" },
-        h("div", { class: "row" },
-          h("div", { class: "grow" }, h("div", { style: "font-weight:650;font-size:18px" }, title), sub ? h("div", { class: "muted small" }, sub) : null),
-          h("span", { class: "small", style: "color:var(--bad)" }, `ошибок: ${s.errors}`)),
-        h("div", { class: "bar" }, h("i", { style: `width:${Math.max(3, (s.weight / Memory.MAX_WEIGHT) * 100)}%` })));
-    }) : h("p", { class: "muted" }, "Пока ошибок нет."),
+    h("div", { class: "scroll" },
+      h("p", { class: "muted", style: "margin:0" }, "Здесь то, в чём вы чаще всего ошибаетесь. Предложения с этими словами будут попадаться чаще, пока вы не начнёте отвечать без ошибок."),
+      list.length ? list.map(([k, s]) => {
+        const [title, sub] = describe(k);
+        return h("div", { class: "hard-item" },
+          h("div", { class: "row" },
+            h("div", { class: "grow" }, h("div", { style: "font-weight:650;font-size:18px" }, title), sub ? h("div", { class: "muted small" }, sub) : null),
+            h("span", { class: "small", style: "color:var(--bad)" }, `ошибок: ${s.errors}`)),
+          h("div", { class: "bar-line" }, h("i", { style: `width:${Math.max(3, (s.weight / Memory.MAX_WEIGHT) * 100)}%` })));
+      }) : h("p", { class: "muted" }, "Пока ошибок нет.")),
     h("button", {
       class: "btn danger",
       onclick: () => {
@@ -386,20 +404,21 @@ function teacherView() {
     input.value = "";
     askTeacher(q);
   };
-  return h("main", { class: "page" },
+  return h("main", { class: "screen" },
     topbar("Учитель"),
-    h("div", { class: "panel" },
-      h("div", {}, `Задание: «${t.item.ru}»`),
-      t.built.length ? h("div", { class: "muted small" }, "Вы собрали: " + t.built.join(" ")) : null,
-      h("div", { class: "muted small" }, "Учитель видит задание, правильный ответ, ваш ответ и ошибки. Он будет подсказывать, а не выдавать ответ сразу.")),
-    !S.settings.apiKey ? h("div", { class: "panel", style: "background:var(--accent-soft)" },
-      "Чтобы учитель заработал, вставьте ключ Gemini в настройках. Это нужно сделать один раз.",
-      h("button", { class: "btn primary", onclick: () => go("settings", "teacher") }, "Открыть настройки")) : null,
-    h("div", { class: "chat", id: "chat" },
-      S.chat.map((m) => h("div", { class: "msg " + (m.fromStudent ? "me" : "t") }, m.shown)),
-      S.teacherBusy ? h("div", { class: "msg t" }, "Думаю…") : null,
-      S.teacherError ? h("div", { class: "check-bad small" }, S.teacherError) : null,
-      S.teacherError?.includes("Настройк") ? h("button", { class: "link", onclick: () => go("settings", "teacher") }, "Открыть настройки") : null),
+    h("div", { class: "scroll", id: "chat-scroll" },
+      h("div", { class: "panel" },
+        h("div", {}, `Задание: «${t.item.ru}»`),
+        t.built.length ? h("div", { class: "muted small" }, "Вы собрали: " + t.built.join(" ")) : null,
+        h("div", { class: "muted small" }, "Учитель видит задание, правильный ответ, ваш ответ и ошибки. Он будет подсказывать, а не выдавать ответ сразу.")),
+      !S.settings.apiKey ? h("div", { class: "panel", style: "background:var(--accent-soft)" },
+        "Чтобы учитель заработал, вставьте ключ Gemini в настройках. Это нужно сделать один раз.",
+        h("button", { class: "btn primary", onclick: () => go("settings", "teacher") }, "Открыть настройки")) : null,
+      h("div", { class: "chat", id: "chat" },
+        S.chat.map((m) => h("div", { class: "msg " + (m.fromStudent ? "me" : "t") }, m.shown)),
+        S.teacherBusy ? h("div", { class: "msg t" }, "Думаю…") : null,
+        S.teacherError ? h("div", { class: "check-bad small" }, S.teacherError) : null,
+        S.teacherError?.includes("Настройк") ? h("button", { class: "link", onclick: () => go("settings", "teacher") }, "Открыть настройки") : null)),
     h("div", { class: "quick" }, QUICK.map((q) => h("button", { disabled: S.teacherBusy, onclick: () => askTeacher(q) }, q))),
     h("div", { class: "ask" },
       h("textarea", { id: "ask", rows: 1, placeholder: "Ваш вопрос…",
@@ -420,9 +439,9 @@ function settingsView() {
     };
     saveSettings(S.settings);
   };
-  return h("main", { class: "page" },
+  return h("main", { class: "screen" },
     topbar("Настройки", settingsBack),
-    h("section", { class: "panel" },
+    h("div", { class: "scroll" }, h("section", { class: "panel" },
       h("div", { style: "font-weight:650;font-size:18px" }, "Тема"),
       [["system", "Как в телефоне"], ["light", "Светлая"], ["dark", "Тёмная"]].map(([v, label]) =>
         h("label", { class: "radio" },
@@ -438,7 +457,7 @@ function settingsView() {
         h("button", { class: "btn primary", onclick: () => { save(); S.keyCheck = { text: "Сохранено.", ok: true }; render(); } }, "Сохранить"),
         h("button", { class: "btn", onclick: () => { save(); checkKey(); } }, "Проверить")),
       S.keyCheck ? h("div", { class: S.keyCheck.ok === false ? "check-bad" : S.keyCheck.ok ? "check-ok" : "muted" }, S.keyCheck.text) : null,
-      h("div", { class: "muted small" }, "Где взять ключ: откройте aistudio.google.com, войдите в Google-аккаунт, нажмите «Get API key» → «Create API key» и скопируйте ключ сюда.")));
+      h("div", { class: "muted small" }, "Где взять ключ: откройте aistudio.google.com, войдите в Google-аккаунт, нажмите «Get API key» → «Create API key» и скопируйте ключ сюда."))));
 }
 
 // ---------- Переходы между экранами ----------
@@ -461,7 +480,7 @@ let lastView = null;
 function render() {
   const app = document.getElementById("app");
   if (S.error) {
-    app.replaceChildren(h("main", { class: "page" }, h("p", { class: "check-bad" }, S.error)));
+    app.replaceChildren(h("main", { class: "screen" }, h("p", { class: "check-bad" }, S.error)));
     return;
   }
   if (!S.task) return;
@@ -473,13 +492,18 @@ function render() {
 
   const views = { exercise: exerciseView, theory: theoryView, hard: hardView, teacher: teacherView, settings: settingsView };
   const nodes = [views[view]()];
-  if (view === "exercise" && S.hintOpen) nodes.push(...hintSheet());
+  if (view === "exercise" && S.sheet === "hint") nodes.push(...hintSheet());
+  if (view === "exercise" && S.sheet === "more") nodes.push(...moreSheet());
   app.replaceChildren(...nodes);
 
   const newAsk = document.getElementById("ask");
   if (newAsk) { newAsk.value = draft; if (focused === "ask") newAsk.focus(); }
-  if (view !== lastView) { window.scrollTo(0, 0); lastView = view; }
-  if (view === "teacher") document.getElementById("chat")?.lastElementChild?.scrollIntoView({ block: "nearest" });
+  lastView = view;
+  if (view === "teacher") {
+    const box = document.getElementById("chat-scroll");
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+  if (view === "exercise") fitToScreen();
 
   // Поле ответа слегка трясётся при каждой неудачной проверке.
   if (view === "exercise" && S.task.failedChecks > lastFailedChecks) {
@@ -489,7 +513,65 @@ function render() {
   }
 }
 
-window.addEventListener("hashchange", () => { S.hintOpen = false; render(); });
+/**
+ * Подгоняет экран упражнения под высоту телефона: если кнопки слов не влезают,
+ * понемногу уменьшает шрифты и отступы (переменная --k), пока всё не поместится.
+ */
+let fit = { key: null, k: 1, builtHeight: 0 };
+
+function fitToScreen(force = false) {
+  const screen = document.querySelector(".screen.exercise");
+  if (!screen) return;
+  const built = document.getElementById("built");
+  // Размер подбирается один раз на предложение (и при повороте экрана),
+  // чтобы кнопки не меняли размер и не сдвигались, пока собираешь ответ.
+  const key = `${S.task.item.id}|${isDone(S.task)}|${innerWidth}x${innerHeight}`;
+  if (!force && fit.key === key) {
+    screen.style.setProperty("--k", fit.k);
+    if (built && fit.builtHeight) built.style.minHeight = fit.builtHeight + "px";
+    return;
+  }
+  // Временно кладём в поле ответа самый длинный правильный вариант, чтобы оставить под него место.
+  const ghosts = [];
+  if (built && !isDone(S.task)) {
+    const longest = S.task.variants.reduce((a, b) => (b.join(" ").length > a.join(" ").length ? b : a));
+    built.querySelector(".ph")?.remove();
+    for (const w of longest) {
+      const g = h("span", { class: "chip", style: "visibility:hidden" }, w);
+      built.append(g);
+      ghosts.push(g);
+    }
+  }
+  const area = screen.querySelector(".tiles, .done-panel");
+  const overflows = () => screen.scrollHeight > screen.clientHeight + 1 || (area && area.scrollHeight > area.clientHeight + 1);
+  let k = 1;
+  screen.style.setProperty("--k", k);
+  while (overflows() && k > 0.62) {
+    k = Math.round((k - 0.04) * 100) / 100;
+    screen.style.setProperty("--k", k);
+  }
+  // На больших телефонах, наоборот, делаем кнопки чуть крупнее, пока есть место.
+  if (k === 1) {
+    while (k < 1.2) {
+      const bigger = Math.round((k + 0.04) * 100) / 100;
+      screen.style.setProperty("--k", bigger);
+      if (overflows()) { screen.style.setProperty("--k", k); break; }
+      k = bigger;
+    }
+  }
+  const builtHeight = built && ghosts.length ? built.offsetHeight : 0;
+  ghosts.forEach((g) => g.remove());
+  fit = { key, k, builtHeight };
+  // Возвращаем подсказку в пустое поле и фиксируем его высоту.
+  if (built && !S.task.built.length && !isDone(S.task)) {
+    built.append(h("span", { class: "ph" }, "Нажимайте слова по порядку. Нажатие на слово здесь убирает его."));
+  }
+  if (built && builtHeight) built.style.minHeight = builtHeight + "px";
+}
+
+window.addEventListener("resize", () => fitToScreen());
+window.visualViewport?.addEventListener("resize", () => fitToScreen());
+window.addEventListener("hashchange", () => { S.sheet = null; render(); });
 
 // ---------- Запуск ----------
 
@@ -503,6 +585,9 @@ async function start() {
     S.lesson = await (await fetch(`lessons/${ref.file}`)).json();
     S.engine = new LessonEngine(S.lesson);
     nextTask();
+    // Для проверки раскладки: ?item=L1-044 открывает конкретное предложение.
+    const forced = S.lesson.items.find((it) => it.id === new URLSearchParams(location.search).get("item"));
+    if (forced) S.task = S.engine.newTask(forced);
   } catch (e) {
     S.error = "Не удалось загрузить урок: " + e.message;
   }
