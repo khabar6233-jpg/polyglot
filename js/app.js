@@ -161,21 +161,43 @@ function listen() {
   if (S.listening) { recognition?.stop(); return; }
   const r = new Recognition();
   r.lang = "en-US";
-  r.interimResults = false;
+  // Слушаем непрерывно и с промежуточными результатами, а останавливаем сами:
+  // через 2 секунды тишины после слов (iPhone сам запись не прекращает).
+  r.continuous = true;
+  r.interimResults = true;
   r.maxAlternatives = 5;
   const itemId = S.task.item.id;
+  let results = null;
+  let silence = null;
+  const stopAfter = (ms) => { clearTimeout(silence); silence = setTimeout(() => r.stop(), ms); };
+  stopAfter(8000); // если ничего не сказано — через 8 секунд
+  const limit = setTimeout(() => r.stop(), 30000);
   r.onresult = (e) => {
-    const res = e.results[0];
-    const texts = [...Array(res.length).keys()].map((i) => res[i].transcript);
-    if (S.task?.item.id === itemId) update((eng, task) => eng.fromSpeech(task, texts));
+    results = e.results;
+    stopAfter(2000);
   };
   r.onerror = (e) => {
+    if (e.error === "aborted") return;
     S.voiceError = e.error === "not-allowed" || e.error === "service-not-allowed"
       ? "Нет доступа к микрофону. Разрешите его в настройках браузера."
       : e.error === "no-speech" ? "Ничего не слышно. Нажмите 🎤 и скажите предложение."
       : "Не получилось распознать. Попробуйте ещё раз.";
   };
-  r.onend = () => { S.listening = false; recognition = null; render(); };
+  r.onend = () => {
+    clearTimeout(silence);
+    clearTimeout(limit);
+    S.listening = false;
+    recognition = null;
+    // Фраза может прийти несколькими кусками; варианты распознавания собираем по номеру варианта.
+    const parts = results ? [...results] : [];
+    const count = Math.max(0, ...parts.map((p) => p.length));
+    const texts = [...Array(count).keys()].map((i) => parts.map((p) => (p[i] || p[0]).transcript).join(" "));
+    if (texts.some((t) => t.trim()) && S.task?.item.id === itemId) update((eng, task) => eng.fromSpeech(task, texts));
+    else {
+      if (!S.voiceError && S.task?.item.id === itemId) S.voiceError = "Ничего не слышно. Нажмите 🎤 и скажите предложение.";
+      render();
+    }
+  };
   recognition = r;
   S.listening = true;
   window.speechSynthesis?.cancel();
