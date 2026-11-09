@@ -266,9 +266,10 @@ function exerciseView() {
         onclick: () => update((e, task) => e.tap(task, w, !enter)),
       }, w))),
     h("nav", { class: "bar" },
+      // Слева — проверить ответ сейчас (сколько бы слов ни было), справа — стереть последнее слово.
       done ? null : h("div", { class: "row" },
-        h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫"),
-        enter ? h("button", { class: "btn primary", disabled: !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "Ввод") : null),
+        h("button", { class: "btn answer", disabled: !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "✓ Ответить"),
+        h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫")),
       h("div", { class: "tabs" },
         h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),
         h("button", { onclick: () => go("theory") }, "Правила"),
@@ -288,7 +289,8 @@ function moreSheet() {
         h("label", { class: "switch-row" },
           h("div", { class: "grow" },
             h("div", { style: "font-weight:650" }, "Ввод"),
-            h("div", { class: "muted small" }, enter ? "Проверка по кнопке «Ввод»" : "Проверка сразу после последнего слова")),
+            h("div", { class: "muted small" }, enter ? "Проверка только по кнопке «Ответить»"
+              : "Проверка сама после последнего слова (и в любой момент кнопкой «Ответить»)")),
           h("span", { class: "switch" },
             h("input", { type: "checkbox", checked: enter, onchange: (e) => { S.progress = { ...S.progress, enterMode: e.target.checked }; persist(); render(); } }),
             h("span"))),
