@@ -209,7 +209,8 @@ function taskCard() {
   if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
     const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && i === t.built.length - 1 ? t.punctuation : "");
-    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : catClass(w)) }, shown));
+    // В строке ответа слова обычного цвета; цвет групп — только на кнопках.
+    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : "") }, shown));
   });
 
   const card = h("section", { class: "card" },
