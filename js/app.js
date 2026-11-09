@@ -4,8 +4,6 @@ import {
   LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory, sentence,
 } from "./engine.js";
 
-const PLACEHOLDER = "Нажимайте слова по порядку. Нажатие на эту строку (или ⌫) стирает последнее слово.";
-
 /** Класс цвета группы слова: вспомогательные, местоимения, артикли, предлоги, вопросительные. */
 const catClass = (w) => {
   const c = wordCategory(w);
@@ -207,7 +205,6 @@ function taskCard() {
   const done = isDone(t);
   // Зелёная рамка — собрано верно; жёлтая — показан правильный ответ после ошибки или «Показать ответ».
   const built = h("div", { class: "built" + (t.solved ? " done" : done ? " fixed" : ""), id: "built" });
-  if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
     const last = i === t.built.length - 1;
     const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && last && w !== "?" ? t.punctuation : "");
@@ -259,7 +256,8 @@ function exerciseView() {
     header(),
     taskCard(),
     // Нажатое слово «уходит» в строку ответа: его кнопка пустеет, но место остаётся, чтобы остальные не сдвигались.
-    done ? donePanel() : h("div", { class: "tiles" }, t.buttons.map((w, i) =>
+    // Сетка: 2 колонки, а если слов много — 3, чтобы все поместились.
+    done ? donePanel() : h("div", { class: "tiles", style: `--cols:${t.buttons.length > 10 ? 3 : 2}` }, t.buttons.map((w, i) =>
       h("button", {
         class: "tile" + catClass(w) + (used[i] ? " used" : ""),
         disabled: used[i],
@@ -580,7 +578,10 @@ function fitToScreen(force = false) {
     }
   }
   const area = screen.querySelector(".tiles, .done-panel");
-  const overflows = () => screen.scrollHeight > screen.clientHeight + 1 || (area && area.scrollHeight > area.clientHeight + 1);
+  // Не влезает по высоте — или какое-то длинное слово не помещается в свою клетку по ширине.
+  const overflows = () => screen.scrollHeight > screen.clientHeight + 1 ||
+    (area && (area.scrollHeight > area.clientHeight + 1 ||
+      [...area.querySelectorAll(".tile")].some((b) => b.scrollWidth > b.clientWidth + 1)));
   let k = 1;
   screen.style.setProperty("--k", k);
   while (overflows() && k > 0.62) {
@@ -599,10 +600,6 @@ function fitToScreen(force = false) {
   const builtHeight = built && ghosts.length ? built.offsetHeight : 0;
   ghosts.forEach((g) => g.remove());
   fit = { key, k, builtHeight };
-  // Возвращаем подсказку в пустое поле и фиксируем его высоту.
-  if (built && !S.task.built.length && !isDone(S.task)) {
-    built.append(h("span", { class: "ph" }, PLACEHOLDER));
-  }
   if (built && builtHeight) built.style.minHeight = builtHeight + "px";
 }
 

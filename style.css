@@ -8,6 +8,7 @@
   --c-aux: #6A3FC4; --c-aux-bg: #F1ECFB; --c-pron: #1F67A8; --c-pron-bg: #E6F0FA;
   --c-art: #A65300; --c-art-bg: #FCEFE0; --c-prep: #0F7A63; --c-prep-bg: #E2F4EF;
   --c-q: #AD2D66; --c-q-bg: #FBE6EF;
+  --band: #E3F0E6; /* полоса строки ответа */
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
   color-scheme: light;
 }
@@ -20,6 +21,7 @@
     --c-aux: #BFA4FF; --c-aux-bg: #2A2342; --c-pron: #8CC2F2; --c-pron-bg: #1C2A3B;
     --c-art: #F5AE6B; --c-art-bg: #3A2A1A; --c-prep: #5FD6BA; --c-prep-bg: #163631;
     --c-q: #F59AC2; --c-q-bg: #3A1F2C;
+    --band: #142519;
     color-scheme: dark;
   }
 }
@@ -31,6 +33,7 @@
   --c-aux: #BFA4FF; --c-aux-bg: #2A2342; --c-pron: #8CC2F2; --c-pron-bg: #1C2A3B;
   --c-art: #F5AE6B; --c-art-bg: #3A2A1A; --c-prep: #5FD6BA; --c-prep-bg: #163631;
   --c-q: #F59AC2; --c-q-bg: #3A1F2C;
+  --band: #142519;
   color-scheme: dark;
 }
 
@@ -82,17 +85,16 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 .meter-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 4px; }
 .meter-row .ok { color: var(--ok); }
 
-/* Карточка задания */
-.card {
-  flex: none; background: var(--surface); border-radius: 16px;
-  padding: calc(12px * var(--k)) 14px; display: flex; flex-direction: column; gap: calc(8px * var(--k));
-}
-.ru { font-size: calc(21px * var(--k)); font-weight: 650; line-height: 1.25; margin: 0; }
-.note { font-size: calc(14px * var(--k)); color: var(--muted); }
-/* Строка ответа: без рамки и фона — слова просто появляются одно за другим, как текст. */
+/* Задание: русское предложение просто текстом, под ним — полоса ответа на всю ширину экрана. */
+.card { flex: none; display: flex; flex-direction: column; gap: calc(10px * var(--k)); padding-top: calc(4px * var(--k)); }
+.ru { font-size: calc(21px * var(--k)); font-weight: 500; line-height: 1.3; margin: 0; }
+.note { font-size: calc(14px * var(--k)); color: var(--muted); margin-top: 4px; }
 .built {
-  min-height: calc(84px * var(--k)); padding: 2px 0;
-  display: flex; flex-wrap: wrap; column-gap: calc(7px * var(--k)); row-gap: 2px; align-content: flex-start;
+  /* Выходит за поля экрана, чтобы полоса была от края до края. */
+  margin: 0 calc(-12px - env(safe-area-inset-right)) 0 calc(-12px - env(safe-area-inset-left));
+  padding: calc(10px * var(--k)) calc(16px + env(safe-area-inset-right)) calc(10px * var(--k)) calc(16px + env(safe-area-inset-left));
+  min-height: calc(76px * var(--k)); background: var(--band);
+  display: flex; flex-wrap: wrap; column-gap: calc(7px * var(--k)); row-gap: 2px; align-content: center;
 }
 .result-head.bad { color: var(--bad); }
 .attempt { font-size: calc(15px * var(--k)); color: var(--muted); }
@@ -117,12 +119,18 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
 /* Кнопки слов: все одинаковые; область занимает оставшееся место */
-/* Ряды кнопок ровные: каждая кнопка чуть растягивается, чтобы ряд заполнял всю ширину. */
+/* Слова для выбора — ровная сетка в 2–3 колонки на всё оставшееся место, крупный текст без рамок. */
 .tiles {
-  flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start;
-  gap: calc(8px * var(--k)); overflow: hidden; padding-top: 2px;
+  flex: 1; min-height: 0; overflow: hidden;
+  display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr);
+  column-gap: 6px; row-gap: calc(2px * var(--k));
 }
-.tiles .tile { flex: 1 0 auto; }
+.tiles .tile {
+  min-width: 0; min-height: calc(42px * var(--k)); padding: 2px 4px; border: none; border-radius: 12px;
+  background: none; box-shadow: none; font-size: calc(24px * var(--k)); font-weight: 400; white-space: nowrap;
+}
+.tiles .tile:active { background: var(--surface2); transform: none; }
+.tiles .tile[class*="cat-"] { background: none; }
 .tile {
   min-height: calc(46px * var(--k)); min-width: calc(44px * var(--k));
   padding: calc(7px * var(--k)) calc(13px * var(--k)); border-radius: 11px;
@@ -132,10 +140,7 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 .tile:active { transform: translateY(1px); }
 /* Использованное слово «ушло» в строку ответа: на его месте едва заметная пунктирная ячейка,
    чтобы ряды оставались ровными и остальные кнопки не сдвигались. */
-.tiles .tile.used {
-  color: transparent; background: transparent; border: 1px dashed var(--line);
-  box-shadow: none; pointer-events: none;
-}
+.tiles .tile.used { color: transparent; background: none; pointer-events: none; }
 /* Скромные цвета: зелёный — проверить ответ, красный — стереть слово. */
 .btn.answer { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 .btn.erase { background: var(--bad-soft); color: var(--bad); border-color: transparent; font-size: 24px; line-height: 1; }
