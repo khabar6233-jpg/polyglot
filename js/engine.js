@@ -89,12 +89,25 @@ const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "sev
   "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
 const TENS = { 30: "thirty", 40: "forty", 50: "fifty", 60: "sixty", 100: "hundred" };
 
+/** Сокращения с местоимениями: в кнопках их нет, но голосом их говорят — раскрываем в полную форму. */
+const SPOKEN_CONTRACTIONS = {
+  "i'm": ["I", "am"], "you're": ["you", "are"], "we're": ["we", "are"], "they're": ["they", "are"],
+  "he's": ["he", "is"], "she's": ["she", "is"], "it's": ["it", "is"], "that's": ["that", "is"],
+  "there's": ["there", "is"], "what's": ["what", "is"], "where's": ["where", "is"], "who's": ["who", "is"],
+  "how's": ["how", "is"],
+  "i'll": ["I", "will"], "you'll": ["you", "will"], "we'll": ["we", "will"], "they'll": ["they", "will"],
+  "he'll": ["he", "will"], "she'll": ["she", "will"], "it'll": ["it", "will"],
+  "i'd": ["I", "would"], "you'd": ["you", "would"], "we'd": ["we", "would"], "they'd": ["they", "would"],
+  "he'd": ["he", "would"], "she'd": ["she", "would"],
+};
+
 /** Распознанная речь → слова: без запятых и точек, цифры словами, «?» в конце — отдельное слово. */
 export function speechTokens(text) {
   const t = text.trim().replace(/[’‘]/g, "'");
   const question = /\?\s*$/.test(t);
   const words = t.replace(/[.,!?;:"]+/g, " ").split(/\s+/).filter(Boolean)
-    .map((w) => (/^\d+$/.test(w) ? NUMBER_WORDS[+w] || TENS[+w] || w : w));
+    .map((w) => (/^\d+$/.test(w) ? NUMBER_WORDS[+w] || TENS[+w] || w : w))
+    .flatMap((w) => SPOKEN_CONTRACTIONS[key(w)] || [w]);
   return question ? [...words, QMARK] : words;
 }
 

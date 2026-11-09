@@ -63,6 +63,10 @@
       assert(v.solved && answerText(v) === "She didn't buy a car last year.", "голос: верное предложение");
       v = engine.fromSpeech(engine.newTask(item), ["She didn't bought a car last year"]);
       assert(!isDone(v) && v.errors === 1 && v.marked[2], "голос: неверное слово отмечено");
+      const home = { id: "H1", ru: "Я дома.", answers: ["I am at home."], tense: "present", type: "affirmative" };
+      const e3 = new LessonEngine({ id: "h", number: 0, title: "", verbs: [], items: [home] });
+      v = e3.fromSpeech(e3.newTask(home), ["I’m at home."]);
+      assert(v.solved && v.errors === 0, "голос: I'm = I am");
     }
     t = build("she didn't buy");
     assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
