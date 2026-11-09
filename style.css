@@ -4,6 +4,10 @@
   --accent: #2C55D6; --accent-ink: #FFFFFF; --accent-soft: #E3EAFD;
   --future: #7A4FD0; --present: #13866F; --past: #C2620E;
   --ok: #17834A; --ok-soft: #DDF3E6; --bad: #C8333A; --bad-soft: #FBE3E4; --mid: #C2620E;
+  /* Цвета групп слов: вспомогательные, местоимения, артикли, предлоги, вопросительные */
+  --c-aux: #6A3FC4; --c-aux-bg: #F1ECFB; --c-pron: #1F67A8; --c-pron-bg: #E6F0FA;
+  --c-art: #A65300; --c-art-bg: #FCEFE0; --c-prep: #0F7A63; --c-prep-bg: #E2F4EF;
+  --c-q: #AD2D66; --c-q-bg: #FBE6EF;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
   color-scheme: light;
 }
@@ -13,6 +17,9 @@
     --accent: #7D9CFF; --accent-ink: #0F131B; --accent-soft: #232E4D;
     --future: #B497FF; --present: #4CCDB0; --past: #F2A15A;
     --ok: #55D18A; --ok-soft: #173527; --bad: #FF7A80; --bad-soft: #3A1C20; --mid: #F2A15A;
+    --c-aux: #BFA4FF; --c-aux-bg: #2A2342; --c-pron: #8CC2F2; --c-pron-bg: #1C2A3B;
+    --c-art: #F5AE6B; --c-art-bg: #3A2A1A; --c-prep: #5FD6BA; --c-prep-bg: #163631;
+    --c-q: #F59AC2; --c-q-bg: #3A1F2C;
     color-scheme: dark;
   }
 }
@@ -21,6 +28,9 @@
   --accent: #7D9CFF; --accent-ink: #0F131B; --accent-soft: #232E4D;
   --future: #B497FF; --present: #4CCDB0; --past: #F2A15A;
   --ok: #55D18A; --ok-soft: #173527; --bad: #FF7A80; --bad-soft: #3A1C20; --mid: #F2A15A;
+  --c-aux: #BFA4FF; --c-aux-bg: #2A2342; --c-pron: #8CC2F2; --c-pron-bg: #1C2A3B;
+  --c-art: #F5AE6B; --c-art-bg: #3A2A1A; --c-prep: #5FD6BA; --c-prep-bg: #163631;
+  --c-q: #F59AC2; --c-q-bg: #3A1F2C;
   color-scheme: dark;
 }
 
@@ -116,6 +126,17 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 /* Использованное слово «ушло» в строку ответа: кнопки не видно, место сохраняется. */
 .tile.used { visibility: hidden; }
 .btn.erase { font-size: 24px; line-height: 1; }
+
+/* Лёгкий цвет групп слов — на кнопках, в строке ответа и в легенде подсказки. */
+.cat-aux { color: var(--c-aux); background: var(--c-aux-bg); }
+.cat-pron { color: var(--c-pron); background: var(--c-pron-bg); }
+.cat-art { color: var(--c-art); background: var(--c-art-bg); }
+.cat-prep { color: var(--c-prep); background: var(--c-prep-bg); }
+.cat-q { color: var(--c-q); background: var(--c-q-bg); }
+.tile[class*="cat-"], .chip[class*="cat-"] { border-color: transparent; }
+.chip.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.legend span { border-radius: 8px; padding: 3px 9px; font-size: 14px; }
 /* Когда ответ собран: результат и кнопки «Озвучить» / «Дальше» вместо кнопок слов */
 .done-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 .done-panel .others { font-size: calc(14px * var(--k)); color: var(--muted); }

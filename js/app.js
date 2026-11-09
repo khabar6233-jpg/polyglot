@@ -1,10 +1,16 @@
 // Веб-версия приложения: экраны и связь с движком.
 
 import {
-  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons,
+  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory,
 } from "./engine.js";
 
 const PLACEHOLDER = "Нажимайте слова по порядку. Кнопка ⌫ стирает последнее слово.";
+
+/** Класс цвета группы слова: вспомогательные, местоимения, артикли, предлоги, вопросительные. */
+const catClass = (w) => {
+  const c = wordCategory(w);
+  return c ? ` cat-${c}` : "";
+};
 import {
   loadProgress, saveProgress, loadSettings, saveSettings, emptyProgress, askPersistentStorage, DEFAULT_MODEL,
 } from "./storage.js";
@@ -203,7 +209,7 @@ function taskCard() {
   if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
     const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && i === t.built.length - 1 ? t.punctuation : "");
-    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : "") }, shown));
+    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : catClass(w)) }, shown));
   });
 
   const card = h("section", { class: "card" },
@@ -248,7 +254,7 @@ function exerciseView() {
     // Нажатое слово «уходит» в строку ответа: его кнопка пустеет, но место остаётся, чтобы остальные не сдвигались.
     done ? donePanel() : h("div", { class: "tiles" }, t.buttons.map((w, i) =>
       h("button", {
-        class: "tile" + (used[i] ? " used" : ""),
+        class: "tile" + catClass(w) + (used[i] ? " used" : ""),
         disabled: used[i],
         "aria-hidden": used[i] ? "true" : null,
         onclick: () => update((e, task) => e.tap(task, w, !enter)),
@@ -345,6 +351,12 @@ function hintSheet() {
       h("div", { class: "inner theory" },
         h("div", { class: "topbar" }, h("h1", {}, "Таблица времён"),
           h("button", { class: "link", onclick: close }, "Закрыть")),
+        h("div", { class: "legend" },
+          h("span", { class: "cat-aux" }, "do, does, did, will, not"),
+          h("span", { class: "cat-pron" }, "I, you, he, my…"),
+          h("span", { class: "cat-art" }, "a, an, the"),
+          h("span", { class: "cat-prep" }, "in, on, at, to…"),
+          h("span", { class: "cat-q" }, "where, how…")),
         (S.lesson.hint || []).map((b) => theoryBlock(b)))),
   ];
 }

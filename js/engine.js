@@ -90,6 +90,21 @@ export const PRONOUNS = new Set([
   "my", "your", "his", "its", "our", "their",
 ]);
 const POSSESSIVES = new Set(["my", "your", "his", "her", "its", "our", "their"]);
+export const QUESTION_WORDS = new Set(["what", "where", "when", "why", "who", "how", "which", "whose"]);
+
+/**
+ * Группа слова для цвета кнопки: aux (do, does, will, not…), pron (I, you, my…), art (a, an, the),
+ * prep (in, on, at…), q (what, where, how…). Остальные слова — без цвета.
+ */
+export function wordCategory(word) {
+  const w = key(word);
+  if (AUX.has(w)) return "aux";
+  if (PRONOUNS.has(w)) return "pron";
+  if (ARTICLES.has(w)) return "art";
+  if (PREPOSITIONS.has(w)) return "prep";
+  if (QUESTION_WORDS.has(w)) return "q";
+  return null;
+}
 
 /** Быстрый поиск глагола по любой его форме. */
 export class Lexicon {
