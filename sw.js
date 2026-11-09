@@ -1,6 +1,6 @@
 // Работа без интернета: приложение и уроки сохраняются на телефоне.
 // После обновления сайта поменяйте VERSION — тогда телефон скачает новые файлы.
-const VERSION = "polyglot-v1";
+const VERSION = "polyglot-v2";
 const FILES = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "js/app.js", "js/engine.js", "js/storage.js", "js/teacher.js",
@@ -22,8 +22,10 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return; // запросы к Gemini не трогаем
+  // no-cache: браузер обязательно сверяется с сайтом, а не берёт старый файл из своего кэша.
+  const fresh = e.request.mode === "navigate" ? fetch(e.request) : fetch(e.request, { cache: "no-cache" });
   e.respondWith(
-    fetch(e.request)
+    fresh
       .then((res) => {
         const copy = res.clone();
         caches.open(VERSION).then((c) => c.put(e.request, copy));

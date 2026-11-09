@@ -580,9 +580,9 @@ async function start() {
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
   askPersistentStorage();
   try {
-    const index = await (await fetch("lessons/index.json")).json();
+    const index = await (await fetch("lessons/index.json", { cache: "no-cache" })).json();
     const ref = index.lessons[0];
-    S.lesson = await (await fetch(`lessons/${ref.file}`)).json();
+    S.lesson = await (await fetch(`lessons/${ref.file}`, { cache: "no-cache" })).json();
     S.engine = new LessonEngine(S.lesson);
     nextTask();
     // Для проверки раскладки: ?item=L1-044 открывает конкретное предложение.

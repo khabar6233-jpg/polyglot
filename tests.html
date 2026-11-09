@@ -33,6 +33,10 @@
     assert(t.solved && scoreOf(t) === 4, "слово встаёт на место убранного, балл 4");
     t = engine.check(build("she didn't bought a car last year", false));
     assert(t.errors === 1 && engine.check(t).errors === 1, "повторный «Ввод» не добавляет ту же ошибку");
+    t = build("she didn't buy a car last");
+    assert(!isDone(t) && t.errors === 0, "без последнего слова проверка не срабатывает");
+    t = build("she didn't buy a car year last");
+    assert(isDone(t) === false && t.errors === 1, "при нужном числе слов проверка срабатывает и находит ошибку");
     t = engine.reveal(build("she did not", false));
     assert(t.revealed && scoreOf(t) === 2, "«Показать ответ» — балл 2");
 
@@ -63,6 +67,12 @@
           assert(!seenEn.has(s) || seenEn.get(s) === it.id, `${at}: ответ «${s}» уже есть в ${seenEn.get(s)}`);
           seenEn.set(s, it.id);
         }
+        // Короткий вариант не должен быть началом длинного: иначе непонятно, когда проверять.
+        for (const a of vars) for (const b of vars) {
+          if (b.length > a.length && a.every((w, i) => key(w) === key(b[i]))) {
+            problems.push(`${at}: вариант «${a.join(" ")}» — начало варианта «${b.join(" ")}»`);
+          }
+        }
         const task = e.newTask(it);
         const traps = task.buttons.filter((b) => !vars.some((v) => v.some((w) => key(w) === key(b))));
         assert(traps.length >= 4, `${at}: мало ловушек (${traps.length})`);
@@ -73,7 +83,7 @@
               const b = task.buttons.find((bb) => key(bb) === key(w));
               if (!b) { problems.push(`${at}: нет кнопки «${w}»`); break; }
               if (isDone(x)) {
-                if (!x.solved || x.errors || !vars.some((vv) => same(vv, x.built))) problems.push(`${at}: проверка раньше времени в «${v.join(" ")}»`);
+                problems.push(`${at}: проверка сработала раньше последнего слова в «${v.join(" ")}»`);
                 break;
               }
               x = e.tap(x, b, auto);

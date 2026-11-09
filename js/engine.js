@@ -292,9 +292,8 @@ export class LessonEngine {
     const marked = [...task.marked]; marked.splice(at, 0, false);
     const cursor = at + 1 < built.length ? at + 1 : null;
     const next = { ...task, built, marked, cursor, feedback: "none" };
+    // Автопроверка — только когда слов стало столько, сколько в ответе (или больше).
     if (!autoCheck) return next;
-    // Ответ уже совпал с одним из правильных вариантов (например, «at seven» без «o'clock») — засчитываем.
-    if (next.variants.some((v) => same(v, next.built))) return this.check(next);
     return next.built.length >= this.closestVariant(next).length ? this.check(next) : next;
   }
 
