@@ -85,6 +85,19 @@ export function sentence(tokens, punct) {
 /** Как слово выглядит на кнопке: как в ответе (TV, London), только i → I. */
 export const label = (w) => (w === "i" ? "I" : w);
 
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
+const TENS = { 30: "thirty", 40: "forty", 50: "fifty", 60: "sixty", 100: "hundred" };
+
+/** Распознанная речь → слова: без запятых и точек, цифры словами, «?» в конце — отдельное слово. */
+export function speechTokens(text) {
+  const t = text.trim().replace(/[’‘]/g, "'");
+  const question = /\?\s*$/.test(t);
+  const words = t.replace(/[.,!?;:"]+/g, " ").split(/\s+/).filter(Boolean)
+    .map((w) => (/^\d+$/.test(w) ? NUMBER_WORDS[+w] || TENS[+w] || w : w));
+  return question ? [...words, QMARK] : words;
+}
+
 /**
  * Значение слова для подсказки при удержании пальца: перевод из словаря урока,
  * у глаголов — ещё три формы (buy · buys · bought). null — если слова в словаре нет.
@@ -561,6 +574,28 @@ export class LessonEngine {
       forced: true,
       feedback: "none",
     };
+  }
+
+  /**
+   * Голосовой ввод: распознанные фразы (несколько вариантов от распознавания) становятся строкой ответа
+   * и сразу проверяются. Берём первый вариант, который верен; если верного нет — первый.
+   */
+  fromSpeech(task, transcripts) {
+    if (isDone(task)) return task;
+    const words = new Map([...task.variants.flat(), ...task.buttons].map((w) => [key(w), w]));
+    let first = null;
+    for (const text of transcripts) {
+      let built = speechTokens(text).map((w) => words.get(key(w)) || label(key(w)));
+      if (task.item.type !== "question") built = built.filter((w) => w !== QMARK);
+      if (!built.length) continue;
+      // Распознавание часто не ставит «?»: если без него не совпало, а с ним совпадает — добавляем.
+      if (task.item.type === "question" && built.at(-1) !== QMARK && !task.variants.some((v) => same(v, built)) &&
+        task.variants.some((v) => same(v, [...built, QMARK]))) built = [...built, QMARK];
+      const next = { ...task, built, marked: built.map(() => false), cursor: null, feedback: "none" };
+      if (task.variants.some((v) => same(v, built))) return this.check(next);
+      first ??= next;
+    }
+    return first ? this.check(first) : task;
   }
 
   /** «Показать ответ»: дособираем ближайший вариант. Не собранное — ошибка. */

@@ -105,6 +105,8 @@ function nextTask() {
   const e = S.engine;
   const item = Memory.pick(e.lesson.items, (it) => e.elementsOf(it), S.progress, S.task?.item.id);
   S.task = e.newTask(item);
+  S.voiceError = null;
+  recognition?.abort();
   S.recorded = false;
   S.justPassed = false;
   S.chat = [];
@@ -116,6 +118,7 @@ function update(change) {
   if (!S.task) return;
   const t = change(S.engine, S.task);
   S.task = t;
+  S.voiceError = null;
   if (isDone(t) && !S.recorded) {
     S.recorded = true;
     const was = lessonProgress().passed;
@@ -140,6 +143,44 @@ function speak() {
   u.rate = 0.9;
   synth.cancel();
   synth.speak(u);
+}
+
+/**
+ * Голосовой ввод: ученик говорит предложение по-английски, распознанные слова встают в строку
+ * ответа и сразу проверяются. Повторное нажатие во время записи — остановить.
+ */
+let recognition = null;
+
+function listen() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  S.voiceError = null;
+  if (!Recognition) {
+    S.voiceError = "Голосовой ввод здесь не работает. Откройте сайт в Safari или Chrome.";
+    return render();
+  }
+  if (S.listening) { recognition?.stop(); return; }
+  const r = new Recognition();
+  r.lang = "en-US";
+  r.interimResults = false;
+  r.maxAlternatives = 5;
+  const itemId = S.task.item.id;
+  r.onresult = (e) => {
+    const res = e.results[0];
+    const texts = [...Array(res.length).keys()].map((i) => res[i].transcript);
+    if (S.task?.item.id === itemId) update((eng, task) => eng.fromSpeech(task, texts));
+  };
+  r.onerror = (e) => {
+    S.voiceError = e.error === "not-allowed" || e.error === "service-not-allowed"
+      ? "Нет доступа к микрофону. Разрешите его в настройках браузера."
+      : e.error === "no-speech" ? "Ничего не слышно. Нажмите 🎤 и скажите предложение."
+      : "Не получилось распознать. Попробуйте ещё раз.";
+  };
+  r.onend = () => { S.listening = false; recognition = null; render(); };
+  recognition = r;
+  S.listening = true;
+  window.speechSynthesis?.cancel();
+  r.start();
+  render();
 }
 
 async function askTeacher(question) {
@@ -230,7 +271,8 @@ function taskCard() {
 
   if (!done) {
     // Строка состояния всегда одной высоты, чтобы кнопки слов не прыгали.
-    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на строку, чтобы стереть последнее слово."
+    const msg = S.voiceError ? S.voiceError
+      : t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на строку, чтобы стереть последнее слово."
       : t.feedback === "missing" ? "Не хватает слов." : null;
     card.append(h("div", { class: "status" }, msg ? h("span", { class: "msg-bad" }, msg) : null));
   }
@@ -280,6 +322,7 @@ function exerciseView() {
       // Слева — проверить ответ сейчас (сколько бы слов ни было), справа — стереть последнее слово.
       done ? null : h("div", { class: "row" },
         h("button", { class: "btn answer", disabled: !t.built.length, onclick: () => update((e, task) => e.answerNow(task)) }, "✓ Ответить"),
+        h("button", { class: "btn mic" + (S.listening ? " on" : ""), "aria-label": "Сказать ответ голосом", onclick: listen }, S.listening ? "Говорите…" : "🎤"),
         h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫")),
       h("div", { class: "tabs" },
         h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),

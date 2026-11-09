@@ -53,6 +53,16 @@
       assert(!isDone(x), "разговорная форма ждёт «?»");
       x = e2.tap(x, "?", true);
       assert(x.solved && answerText(x) === "You hear me?", "«?» ставится без пробела");
+      x = e2.fromSpeech(e2.newTask(q), ["You hear me"]);
+      assert(x.solved && answerText(x) === "You hear me?", "голос: разговорный вопрос без «?» засчитывается");
+      x = e2.fromSpeech(e2.newTask(q2), ["Did she by a car?", "Did she buy a car?"]);
+      assert(x.solved && x.errors === 0, "голос: берётся верный из вариантов распознавания");
+    }
+    {
+      let v = engine.fromSpeech(engine.newTask(item), ["She didn't buy a car last year."]);
+      assert(v.solved && answerText(v) === "She didn't buy a car last year.", "голос: верное предложение");
+      v = engine.fromSpeech(engine.newTask(item), ["She didn't bought a car last year"]);
+      assert(!isDone(v) && v.errors === 1 && v.marked[2], "голос: неверное слово отмечено");
     }
     t = build("she didn't buy");
     assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
