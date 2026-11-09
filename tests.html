@@ -14,7 +14,7 @@
   <p>Откройте эту страницу, чтобы проверить все уроки: каждый ответ должен собираться из кнопок.</p>
   <div id="out">Идёт проверка…</div>
   <script type="module">
-    import { LessonEngine, Memory, key, isDone, scoreOf, expandGroups, usedButtons, answerText } from "./js/engine.js";
+    import { LessonEngine, Memory, key, isDone, scoreOf, expandGroups, usedButtons, answerText, wordInfo, stackButtons, visibleCells } from "./js/engine.js";
 
     const problems = [];
     const assert = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -72,6 +72,7 @@
     // ---- Все уроки ----
     const index = await (await fetch("lessons/index.json")).json();
     let total = 0;
+    const overCap = {}; // сколько предложений не удалось уложить в заданное число клеток (тогда клетки чуть сжимаются)
     for (const ref of index.lessons) {
       const lesson = await (await fetch(`lessons/${ref.file}`)).json();
       const e = new LessonEngine(lesson);
@@ -102,6 +103,23 @@
           }
         }
         const task = e.newTask(it);
+        // У каждой кнопки есть перевод для подсказки при удержании пальца.
+        for (const b of task.buttons) if (!wordInfo(b, lesson, e.lexicon)) problems.push(`${at}: нет перевода слова «${b}»`);
+        // «Слова под словами»: при любом размере экрана каждый вариант собирается, нажимая только видимые слова.
+        for (const cap of [6, 9, 12, 15]) {
+          const stacks = stackButtons(task, cap);
+          if (task.buttons.length > cap && stacks.length > cap) overCap[cap] = (overCap[cap] || 0) + 1;
+          for (const v of vars) {
+            let x = task;
+            for (const w of v) {
+              if (!visibleCells(x, stacks).some((c) => c && key(c) === key(w))) {
+                problems.push(`${at}: при ${cap} клетках слово «${w}» не видно в «${v.join(" ")}»`);
+                break;
+              }
+              x = e.tap(x, w, false);
+            }
+          }
+        }
         const traps = task.buttons.filter((b) => !vars.some((v) => v.some((w) => key(w) === key(b))));
         assert(traps.length >= 4, `${at}: мало ловушек (${traps.length})`);
         for (const v of vars) {
@@ -131,6 +149,7 @@
     out.innerHTML = problems.length
       ? `<p class="bad">Найдены проблемы: ${problems.length}</p><pre>${problems.join("\n")}</pre>`
       : `<p class="ok">Всё в порядке. Проверено предложений: ${total}.</p>`;
+    out.innerHTML += `<p>Не уложились в число клеток (клетки чуть сжимаются): ${JSON.stringify(overCap)}</p>`;
     document.title = problems.length ? "FAIL" : "OK";
   </script>
 </body>

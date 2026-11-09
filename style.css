@@ -126,7 +126,7 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
   column-gap: 6px; row-gap: calc(2px * var(--k));
 }
 .tiles .tile {
-  min-width: 0; min-height: calc(42px * var(--k)); padding: 2px 4px; border: none; border-radius: 12px;
+  min-width: 0; min-height: calc(36px * var(--k)); padding: 2px 4px; border: none; border-radius: 12px;
   background: none; box-shadow: none; font-size: calc(24px * var(--k)); font-weight: 400; white-space: nowrap;
 }
 .tiles .tile:active { background: var(--surface2); transform: none; }
@@ -141,6 +141,19 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
 /* Использованное слово «ушло» в строку ответа: на его месте едва заметная пунктирная ячейка,
    чтобы ряды оставались ровными и остальные кнопки не сдвигались. */
 .tiles .tile.used { color: transparent; background: none; pointer-events: none; }
+.tiles .tile { -webkit-touch-callout: none; }
+
+/* Значение слова при удержании пальца */
+.word-info {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 70px); transform: translateX(-50%); z-index: 30;
+  width: min(92vw, 420px); padding: 14px 16px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  text-align: center; animation: pop .12s ease-out;
+}
+.word-info .wi-word { font-size: 24px; font-weight: 650; }
+.word-info .wi-meaning { font-size: 17px; margin-top: 4px; }
+.word-info .wi-forms { font-size: 15px; color: var(--muted); margin-top: 6px; }
+@keyframes pop { from { opacity: 0; transform: translateX(-50%) scale(.95); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
 /* Скромные цвета: зелёный — проверить ответ, красный — стереть слово. */
 .btn.answer { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 .btn.erase { background: var(--bad-soft); color: var(--bad); border-color: transparent; font-size: 24px; line-height: 1; }

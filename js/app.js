@@ -1,7 +1,8 @@
 // Веб-версия приложения: экраны и связь с движком.
 
 import {
-  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory, sentence,
+  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, wordCategory, sentence, wordInfo,
+  stackButtons, visibleCells,
 } from "./engine.js";
 
 /** Класс цвета группы слова: вспомогательные, местоимения, артикли, предлоги, вопросительные. */
@@ -25,6 +26,7 @@ const S = {
   recorded: false,
   justPassed: false,
   sheet: null, // "hint" | "more" — открытая шторка
+  layout: { key: null, cap: Infinity }, // сколько клеток со словами помещается на экране
 
   chat: [], // {fromStudent, text, shown}
   teacherBusy: false,
@@ -251,19 +253,24 @@ function exerciseView() {
   const t = S.task;
   const done = isDone(t);
   const enter = S.progress.enterMode;
-  const used = usedButtons(t);
+  const cells = done ? [] : tileCells(t);
   return h("main", { class: "screen exercise" },
     header(),
     taskCard(),
-    // Нажатое слово «уходит» в строку ответа: его кнопка пустеет, но место остаётся, чтобы остальные не сдвигались.
-    // Сетка: 2 колонки, а если слов много — 3, чтобы все поместились.
-    done ? donePanel() : h("div", { class: "tiles", style: `--cols:${t.buttons.length > 10 ? 3 : 2}` }, t.buttons.map((w, i) =>
-      h("button", {
-        class: "tile" + catClass(w) + (used[i] ? " used" : ""),
-        disabled: used[i],
-        "aria-hidden": used[i] ? "true" : null,
-        onclick: () => update((e, task) => e.tap(task, w, !enter)),
-      }, w))),
+    // Нажатое слово «уходит» в строку ответа. Если на его месте «лежало» ещё одно слово — оно становится видно.
+    // Сетка: 2 колонки, а если слов много — 3.
+    done ? donePanel() : h("div", { class: "tiles", style: `--cols:${cells.length > 10 ? 3 : 2}` }, cells.map((w) =>
+      w == null
+        ? h("button", { class: "tile used", disabled: true, "aria-hidden": "true" }, "·")
+        : h("button", {
+          class: "tile" + catClass(w),
+          oncontextmenu: (e) => e.preventDefault(),
+          onpointerdown: () => startHold(w),
+          onpointerup: endHold,
+          onpointerleave: endHold,
+          onpointercancel: endHold,
+          onclick: () => { if (holdShown) { holdShown = false; return; } update((e, task) => e.tap(task, w, !enter)); },
+        }, w))),
     h("nav", { class: "bar" },
       // Слева — проверить ответ сейчас (сколько бы слов ни было), справа — стереть последнее слово.
       done ? null : h("div", { class: "row" },
@@ -274,6 +281,49 @@ function exerciseView() {
         h("button", { disabled: done, onclick: () => update((e, task) => e.reveal(task)) }, "Показать ответ"),
         h("button", { class: "accent", onclick: () => go("teacher") }, "Учитель"),
         h("button", { onclick: () => { S.sheet = "more"; render(); } }, "Ещё"))));
+}
+
+/**
+ * Клетки сетки слов. Если слов больше, чем помещается клеток (layout.cap), лишние слова «лежат под»
+ * другими словами ответа и появляются, когда верхнее слово выбрано. Под словом прячем только слово,
+ * которое в ответе идёт позже, — так нужное слово всегда успевает открыться.
+ * Возвращает для каждой клетки видимое слово или null (клетка опустела).
+ */
+function tileCells(t) {
+  const cap = S.layout.key === layoutKey() ? S.layout.cap : Infinity;
+  return visibleCells(t, stackButtons(t, cap));
+}
+
+// ---------- Значение слова при удержании пальца ----------
+
+let holdTimer = null;
+let holdShown = false;
+
+function startHold(word) {
+  clearTimeout(holdTimer);
+  holdShown = false;
+  holdTimer = setTimeout(() => {
+    const info = wordInfo(word, S.lesson, S.engine.lexicon);
+    holdShown = true;
+    showWordInfo(info || { word, meaning: "нет в словаре урока" });
+  }, 450);
+}
+
+function endHold() {
+  clearTimeout(holdTimer);
+  if (holdShown) setTimeout(hideWordInfo, 1400);
+}
+
+function showWordInfo(info) {
+  hideWordInfo();
+  document.body.append(h("div", { class: "word-info", id: "word-info", onclick: hideWordInfo },
+    h("div", { class: "wi-word" }, info.word),
+    h("div", { class: "wi-meaning" }, info.meaning),
+    info.forms ? h("div", { class: "wi-forms" }, info.forms.join(" · ")) : null));
+}
+
+function hideWordInfo() {
+  document.getElementById("word-info")?.remove();
 }
 
 /** Шторка «Ещё»: ползунок «Ввод», правила урока, трудные слова, настройки. */
@@ -578,22 +628,23 @@ function fitToScreen(force = false) {
     }
   }
   const area = screen.querySelector(".tiles, .done-panel");
-  // Не влезает по высоте — или какое-то длинное слово не помещается в свою клетку по ширине.
-  const overflows = () => screen.scrollHeight > screen.clientHeight + 1 ||
-    (area && (area.scrollHeight > area.clientHeight + 1 ||
-      [...area.querySelectorAll(".tile")].some((b) => b.scrollWidth > b.clientWidth + 1)));
+  const tooWide = () => [...(area?.querySelectorAll(".tile") || [])].some((b) => b.scrollWidth > b.clientWidth + 1);
+  // Шрифт уменьшаем, только если не влезает сам экран (длинное русское предложение) или слово в клетку;
+  // лишние кнопки слов не уменьшают шрифт — они лягут «под» другие слова.
+  const overflows = () => screen.scrollHeight > screen.clientHeight + 1 || tooWide();
+  const tilesOverflow = () => area && area.scrollHeight > area.clientHeight + 1;
   let k = 1;
   screen.style.setProperty("--k", k);
   while (overflows() && k > 0.62) {
     k = Math.round((k - 0.04) * 100) / 100;
     screen.style.setProperty("--k", k);
   }
-  // На больших телефонах, наоборот, делаем кнопки чуть крупнее, пока есть место.
+  // На больших телефонах, наоборот, делаем всё чуть крупнее, пока есть место и для всех слов.
   if (k === 1) {
     while (k < 1.2) {
       const bigger = Math.round((k + 0.04) * 100) / 100;
       screen.style.setProperty("--k", bigger);
-      if (overflows()) { screen.style.setProperty("--k", k); break; }
+      if (overflows() || tilesOverflow()) { screen.style.setProperty("--k", k); break; }
       k = bigger;
     }
   }
@@ -601,7 +652,23 @@ function fitToScreen(force = false) {
   ghosts.forEach((g) => g.remove());
   fit = { key, k, builtHeight };
   if (built && builtHeight) built.style.minHeight = builtHeight + "px";
+
+  // Сколько клеток со словами помещается: если слов больше — включаем «слова под словами».
+  const tiles = screen.querySelector(".tiles");
+  if (tiles && !isDone(S.task)) {
+    const rowH = 46 * k;
+    const rows = Math.max(2, Math.floor((tiles.clientHeight + 2) / rowH));
+    const cap = rows * 3;
+    const lk = layoutKey();
+    const want = S.task.buttons.length > cap ? cap : Infinity;
+    if (S.layout.key !== lk || S.layout.cap !== want) {
+      S.layout = { key: lk, cap: want };
+      if (want !== Infinity) render();
+    }
+  }
 }
+
+const layoutKey = () => `${S.task?.item.id}|${innerWidth}x${innerHeight}`;
 
 window.addEventListener("resize", () => fitToScreen());
 window.visualViewport?.addEventListener("resize", () => fitToScreen());

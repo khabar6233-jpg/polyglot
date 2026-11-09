@@ -80,6 +80,23 @@ export function sentence(tokens, punct) {
 /** Как слово выглядит на кнопке: как в ответе (TV, London), только i → I. */
 export const label = (w) => (w === "i" ? "I" : w);
 
+/**
+ * Значение слова для подсказки при удержании пальца: перевод из словаря урока,
+ * у глаголов — ещё три формы (buy · buys · bought). null — если слова в словаре нет.
+ */
+export function wordInfo(word, lesson, lexicon) {
+  const w = key(word);
+  const glossary = lesson.glossary || {};
+  const verb = lexicon.verbOf(w);
+  const meaning = glossary[w] || (verb && glossary[key(verb.base)]);
+  if (!meaning) return null;
+  return {
+    word: label(word),
+    meaning,
+    forms: verb && !glossary[w]?.startsWith("✗") ? [verb.base, verb.s, verb.past] : null,
+  };
+}
+
 // ---------- Метки «что проверяется» ----------
 
 export const AUX = new Set(["do", "does", "did", "will", "don't", "doesn't", "didn't", "won't", "not"]);
@@ -244,6 +261,82 @@ export const same = (a, b) => a.length === b.length && startsWith(a, b);
 
 /** solved — собрано верно, revealed — «Показать ответ», forced — «Ответить» с ошибкой (показан правильный). */
 export const isDone = (t) => Boolean(t.solved || t.revealed || t.forced);
+
+/**
+ * «Слова под словами» для длинных предложений: если кнопок больше, чем клеток на экране (cap),
+ * лишние слова ответа лежат под другими словами ответа и открываются, когда верхнее выбрано.
+ * Прячем последние слова ответа и кладём каждое под слово, которое в ответе идёт раньше, —
+ * тогда нужное слово всегда успевает открыться. Ловушки и «?» не прячем.
+ * Возвращает стопки индексов кнопок: [верхнее, под ним, …].
+ */
+export function stackButtons(t, cap) {
+  const n = t.buttons.length;
+  if (!(n > cap)) return t.buttons.map((_, i) => [i]);
+  // Для каждой кнопки — её место в каждом варианте ответа (у повторов — по порядку появления), -1 если нет.
+  const vars = t.variants.map((v) => v.map(key));
+  const seen = new Map();
+  const nth = t.buttons.map((w) => { const k = key(w); const c = seen.get(k) || 0; seen.set(k, c + 1); return c; });
+  const posIn = (v, i) => {
+    const k = key(t.buttons[i]);
+    for (let j = 0, c = 0; j < v.length; j++) if (v[j] === k && c++ === nth[i]) return j;
+    return -1;
+  };
+  const pos = t.buttons.map((_, i) => vars.map((v) => posIn(v, i)));
+  const isAnswer = (i) => pos[i].some((p) => p >= 0);
+  // Слово c может закрывать слово h, если в каждом варианте, где есть h, c тоже есть и стоит раньше.
+  const covers = (c, h) => vars.every((_, vi) => pos[h][vi] < 0 || (pos[c][vi] >= 0 && pos[c][vi] < pos[h][vi]));
+  const mainPos = (i) => (pos[i][0] >= 0 ? pos[i][0] : 1e9);
+
+  let toHide = n - cap;
+  const stacks = t.buttons.map((_, i) => [i]);
+  const closed = new Set(); // стопки, в низу которых ловушка: под ловушку ничего не кладём
+  // 1) Прячем слова ответа — с конца предложения.
+  const answers = t.buttons.map((_, i) => i).filter(isAnswer).sort((a, b) => mainPos(b) - mainPos(a));
+  for (const h of answers) {
+    if (toHide <= 0) break;
+    const own = stacks.findIndex((s) => s[0] === h && s.length === 1);
+    if (own < 0) continue; // под этим словом уже что-то лежит
+    const options = stacks.filter((s, si) => si !== own && !closed.has(s) && covers(s[s.length - 1], h));
+    if (!options.length) continue;
+    const target = options.reduce((a, b) => (mainPos(b[b.length - 1]) < mainPos(a[a.length - 1]) ? b : a));
+    stacks.splice(own, 1);
+    target.push(h);
+    toHide--;
+  }
+  // 2) Если места всё ещё мало — прячем ловушки в самый низ стопок со словами ответа.
+  const traps = t.buttons.map((_, i) => i).filter((i) => !isAnswer(i));
+  for (const tr of traps) {
+    if (toHide <= 0) break;
+    const own = stacks.findIndex((s) => s[0] === tr && s.length === 1);
+    const target = stacks.find((s, si) => si !== own && !closed.has(s) && isAnswer(s[s.length - 1]));
+    if (own < 0 || !target) continue;
+    stacks.splice(own, 1);
+    target.push(tr);
+    closed.add(target);
+    toHide--;
+  }
+  return stacks;
+}
+
+/** Видимое слово в каждой клетке (null — клетка опустела): верхние кнопки расходуются первыми. */
+export function visibleCells(t, stacks) {
+  const left = new Map();
+  t.built.forEach((w) => left.set(key(w), (left.get(key(w)) || 0) + 1));
+  const used = new Array(t.buttons.length).fill(false);
+  const depth = Math.max(1, ...stacks.map((s) => s.length));
+  for (let d = 0; d < depth; d++) {
+    for (const s of stacks) {
+      const i = s[d];
+      if (i == null) continue;
+      const k = key(t.buttons[i]);
+      if ((left.get(k) || 0) > 0) { used[i] = true; left.set(k, left.get(k) - 1); }
+    }
+  }
+  return stacks.map((s) => {
+    const i = s.find((j) => !used[j]);
+    return i == null ? null : t.buttons[i];
+  });
+}
 
 /** Какие кнопки уже использованы: слово ушло в строку ответа (по одной кнопке на каждое слово). */
 export function usedButtons(t) {
