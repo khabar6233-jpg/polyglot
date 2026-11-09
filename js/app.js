@@ -4,7 +4,7 @@ import {
   LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons, wordCategory,
 } from "./engine.js";
 
-const PLACEHOLDER = "Нажимайте слова по порядку. Кнопка ⌫ стирает последнее слово.";
+const PLACEHOLDER = "Нажимайте слова по порядку. Нажатие на слово здесь убирает его, ⌫ — последнее слово.";
 
 /** Класс цвета группы слова: вспомогательные, местоимения, артикли, предлоги, вопросительные. */
 const catClass = (w) => {
@@ -208,9 +208,15 @@ function taskCard() {
   const built = h("div", { class: "built" + (done ? " done" : ""), id: "built" });
   if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
+    // Синяя черта: сюда встанет следующее слово (после того как убрали слово из середины).
+    if (t.cursor === i && !done) built.append(h("span", { class: "caret" }));
     const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && i === t.built.length - 1 ? t.punctuation : "");
-    // В строке ответа слова обычного цвета; цвет групп — только на кнопках.
-    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : "") }, shown));
+    // В строке ответа слова обычного цвета; нажатие убирает слово и возвращает его в кнопки.
+    built.append(h("button", {
+      class: "chip" + (t.marked[i] ? " wrong" : ""),
+      disabled: done,
+      onclick: () => update((e, task) => e.removeAt(task, i)),
+    }, shown));
   });
 
   const card = h("section", { class: "card" },
@@ -219,7 +225,7 @@ function taskCard() {
 
   if (!done) {
     // Строка состояния всегда одной высоты, чтобы кнопки слов не прыгали.
-    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Сотрите их кнопкой ⌫."
+    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на слово, чтобы убрать его."
       : t.feedback === "missing" ? "Не хватает слов." : null;
     card.append(h("div", { class: "status" },
       msg ? h("span", { class: "msg-bad" }, msg)

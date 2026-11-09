@@ -37,6 +37,16 @@
     assert(!isDone(t) && t.errors === 0, "без последнего слова проверка не срабатывает");
     t = build("she didn't buy a car year last");
     assert(isDone(t) === false && t.errors === 1, "при нужном числе слов проверка срабатывает и находит ошибку");
+    {
+      const q = { id: "Q1", ru: "Ты меня слышишь?", answers: ["Do you hear me?"], tense: "present", type: "question" };
+      const q2 = { id: "Q2", ru: "Она купила машину?", answers: ["Did she buy a car?"], tense: "past", type: "question" };
+      const q3 = { id: "Q3", ru: "Твой брат купит машину?", answers: ["Will your brother buy a car?"], tense: "future", type: "question" };
+      const e2 = new LessonEngine({ id: "q", number: 0, title: "", verbs: [{ base: "hear", s: "hears", past: "heard" }, { base: "buy", s: "buys", past: "bought" }], items: [q, q2, q3] });
+      const spoken = (it) => e2.variantsOf(it).map((v) => v.join(" "));
+      assert(spoken(q).includes("you hear me"), "разговорный вопрос: You hear me?");
+      assert(spoken(q2).includes("she bought a car"), "разговорный вопрос: She bought a car?");
+      assert(spoken(q3).includes("your brother will buy a car"), "разговорный вопрос: Your brother will buy a car?");
+    }
     t = build("she didn't buy");
     assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
     assert(usedButtons(engine.undo(t)).filter(Boolean).length === 2, "⌫ возвращает слово в кнопки");
@@ -66,7 +76,8 @@
         assert(it.ru.trim().endsWith("?") === q, `${at}: знак в конце русского не совпадает с типом`);
         const vars = e.variantsOf(it);
         for (const v of vars) {
-          const s = v.map(key).join(" ");
+          // Со знаком в конце: «You hear me?» и «You hear me.» — разные предложения.
+          const s = v.map(key).join(" ") + (q ? "?" : ".");
           assert(!seenEn.has(s) || seenEn.get(s) === it.id, `${at}: ответ «${s}» уже есть в ${seenEn.get(s)}`);
           seenEn.set(s, it.id);
         }

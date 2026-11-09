@@ -275,8 +275,37 @@ export class LessonEngine {
   }
 
   variantsOf(item) {
-    if (!this.variantCache.has(item.id)) this.variantCache.set(item.id, variants(item.answers, this.properNouns));
+    if (!this.variantCache.has(item.id)) {
+      const vars = variants(item.answers, this.properNouns);
+      const extra = item.type === "question" ? vars.map((v) => this.spokenQuestion(v)).filter(Boolean) : [];
+      const seen = new Set(vars.map((v) => v.map(key).join(" ")));
+      this.variantCache.set(item.id, [...vars, ...extra.filter((v) => !seen.has(v.map(key).join(" ")) && seen.add(v.map(key).join(" ")))]);
+    }
     return this.variantCache.get(item.id);
+  }
+
+  /**
+   * Разговорный вопрос — без do/does/did, одной интонацией: «Do you hear me?» → «You hear me?».
+   * Does she speak → She speaks, Did you see → You saw, Will you come → You will come.
+   * Только для вопросов «да/нет», которые начинаются с do/does/did/will. null — если не получается.
+   */
+  spokenQuestion(v) {
+    const aux = key(v[0]);
+    if (!QUESTION_AUX.has(aux)) return null;
+    const rest = v.slice(1);
+    // Глагол — первое слово после подлежащего, которое есть в списке глаголов (often, usually пропускаем).
+    const j = rest.findIndex((_, i) => i > 0 && verbAt(rest, i, this.lexicon) && key(rest[i]) === verbAt(rest, i, this.lexicon).base);
+    if (j < 1) return null;
+    const verb = verbAt(rest, j, this.lexicon);
+    const subject = rest.slice(0, j);
+    const after = rest.slice(j + 1);
+    let verbPart;
+    if (aux === "do") verbPart = [rest[j]];
+    else if (aux === "does") verbPart = [verb.s];
+    else if (aux === "did") verbPart = [verb.past];
+    else verbPart = ["will", rest[j]];
+    // Наречия частоты (often, usually) остаются перед глаголом: «You often go…».
+    return [...subject, ...verbPart, ...after].map((w, i) => (i === 0 && w !== "I" && !this.properNouns.has(w) ? w.toLowerCase() : w));
   }
 
   elementsOf(item) {
