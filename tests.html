@@ -14,7 +14,7 @@
   <p>Откройте эту страницу, чтобы проверить все уроки: каждый ответ должен собираться из кнопок.</p>
   <div id="out">Идёт проверка…</div>
   <script type="module">
-    import { LessonEngine, Memory, key, same, isDone, scoreOf, expandGroups } from "./js/engine.js";
+    import { LessonEngine, Memory, key, isDone, scoreOf, expandGroups, usedButtons } from "./js/engine.js";
 
     const problems = [];
     const assert = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -37,6 +37,9 @@
     assert(!isDone(t) && t.errors === 0, "без последнего слова проверка не срабатывает");
     t = build("she didn't buy a car year last");
     assert(isDone(t) === false && t.errors === 1, "при нужном числе слов проверка срабатывает и находит ошибку");
+    t = build("she didn't buy");
+    assert(usedButtons(t).filter(Boolean).length === 3, "нажатые слова исчезают из кнопок");
+    assert(usedButtons(engine.undo(t)).filter(Boolean).length === 2, "⌫ возвращает слово в кнопки");
     t = engine.reveal(build("she did not", false));
     assert(t.revealed && scoreOf(t) === 2, "«Показать ответ» — балл 2");
 
@@ -80,8 +83,10 @@
           for (const auto of [true, false]) {
             let x = task;
             for (const w of v) {
-              const b = task.buttons.find((bb) => key(bb) === key(w));
-              if (!b) { problems.push(`${at}: нет кнопки «${w}»`); break; }
+              // Нажимать можно только ещё не использованную кнопку: слова «уходят» в строку ответа.
+              const used = usedButtons(x);
+              const b = x.buttons.find((bb, i) => !used[i] && key(bb) === key(w));
+              if (!b) { problems.push(`${at}: не хватает кнопки «${w}» в «${v.join(" ")}»`); break; }
               if (isDone(x)) {
                 problems.push(`${at}: проверка сработала раньше последнего слова в «${v.join(" ")}»`);
                 break;

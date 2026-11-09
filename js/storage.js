@@ -27,8 +27,11 @@ export const emptyProgress = () => ({ elements: {}, sentences: {}, lessons: {}, 
 export const loadProgress = () => read(PROGRESS_KEY, emptyProgress());
 export const saveProgress = (p) => write(PROGRESS_KEY, p);
 
-/** apiKey — ключ Gemini, model — название модели, theme — system | light | dark. */
-export const loadSettings = () => read(SETTINGS_KEY, { apiKey: "", model: DEFAULT_MODEL, theme: "system" });
+/**
+ * apiKey — ключ Gemini, model — название модели, theme — system | light | dark,
+ * autoSpeak — произносить ответ сам, когда предложение собрано.
+ */
+export const loadSettings = () => read(SETTINGS_KEY, { apiKey: "", model: DEFAULT_MODEL, theme: "system", autoSpeak: false });
 export const saveSettings = (s) => write(SETTINGS_KEY, s);
 
 /** Просим браузер не стирать наши данные при нехватке места (Safari на iPhone это учитывает). */

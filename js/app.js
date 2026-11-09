@@ -1,8 +1,10 @@
 // Веб-версия приложения: экраны и связь с движком.
 
 import {
-  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers,
+  LessonEngine, Memory, average, isDone, scoreOf, answerText, otherAnswers, usedButtons,
 } from "./engine.js";
+
+const PLACEHOLDER = "Нажимайте слова по порядку. Кнопка ⌫ стирает последнее слово.";
 import {
   loadProgress, saveProgress, loadSettings, saveSettings, emptyProgress, askPersistentStorage, DEFAULT_MODEL,
 } from "./storage.js";
@@ -110,6 +112,8 @@ function update(change) {
     S.progress = Memory.record(S.progress, S.lesson.id, t, S.engine.elementsOf(t.item));
     if (!was && lessonProgress().passed) S.justPassed = true;
     persist();
+    // Автоозвучка: сразу произносим правильный ответ (iPhone разрешает это только в ответ на нажатие — так и есть).
+    if (S.settings.autoSpeak) speak();
   }
   render();
 }
@@ -196,15 +200,10 @@ function taskCard() {
   const t = S.task;
   const done = isDone(t);
   const built = h("div", { class: "built" + (done ? " done" : ""), id: "built" });
-  if (!t.built.length) built.append(h("span", { class: "ph" }, "Нажимайте слова по порядку. Нажатие на слово здесь убирает его."));
+  if (!t.built.length) built.append(h("span", { class: "ph" }, PLACEHOLDER));
   t.built.forEach((w, i) => {
-    if (t.cursor === i && !done) built.append(h("span", { class: "caret" }));
     const shown = (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w) + (done && i === t.built.length - 1 ? t.punctuation : "");
-    built.append(h("button", {
-      class: "chip" + (t.marked[i] ? " wrong" : ""),
-      disabled: done,
-      onclick: () => update((e, task) => e.removeAt(task, i)),
-    }, shown));
+    built.append(h("span", { class: "chip" + (t.marked[i] ? " wrong" : "") }, shown));
   });
 
   const card = h("section", { class: "card" },
@@ -213,7 +212,7 @@ function taskCard() {
 
   if (!done) {
     // Строка состояния всегда одной высоты, чтобы кнопки слов не прыгали.
-    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Нажмите на слово, чтобы убрать."
+    const msg = t.feedback === "wrong" ? "Красные слова — неверные. Сотрите их кнопкой ⌫."
       : t.feedback === "missing" ? "Не хватает слов." : null;
     card.append(h("div", { class: "status" },
       msg ? h("span", { class: "msg-bad" }, msg)
@@ -242,14 +241,21 @@ function exerciseView() {
   const t = S.task;
   const done = isDone(t);
   const enter = S.progress.enterMode;
+  const used = usedButtons(t);
   return h("main", { class: "screen exercise" },
     header(),
     taskCard(),
-    done ? donePanel() : h("div", { class: "tiles" }, t.buttons.map((w) =>
-      h("button", { class: "tile", onclick: () => update((e, task) => e.tap(task, w, !enter)) }, w))),
+    // Нажатое слово «уходит» в строку ответа: его кнопка пустеет, но место остаётся, чтобы остальные не сдвигались.
+    done ? donePanel() : h("div", { class: "tiles" }, t.buttons.map((w, i) =>
+      h("button", {
+        class: "tile" + (used[i] ? " used" : ""),
+        disabled: used[i],
+        "aria-hidden": used[i] ? "true" : null,
+        onclick: () => update((e, task) => e.tap(task, w, !enter)),
+      }, w))),
     h("nav", { class: "bar" },
       done ? null : h("div", { class: "row" },
-        h("button", { class: "btn", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "Ой, ошибся"),
+        h("button", { class: "btn erase", "aria-label": "Ой, ошибся: стереть последнее слово", disabled: !t.built.length, onclick: () => update((e, task) => e.undo(task)) }, "⌫"),
         enter ? h("button", { class: "btn primary", disabled: !t.built.length, onclick: () => update((e, task) => e.check(task)) }, "Ввод") : null),
       h("div", { class: "tabs" },
         h("button", { onclick: () => { S.sheet = "hint"; render(); } }, "Подсказка"),
@@ -441,7 +447,15 @@ function settingsView() {
   };
   return h("main", { class: "screen" },
     topbar("Настройки", settingsBack),
-    h("div", { class: "scroll" }, h("section", { class: "panel" },
+    h("div", { class: "scroll" },
+    h("label", { class: "switch-row" },
+      h("div", { class: "grow" },
+        h("div", { style: "font-weight:650" }, "Автоозвучка"),
+        h("div", { class: "muted small" }, "Произносить правильный ответ, как только предложение собрано")),
+      h("span", { class: "switch" },
+        h("input", { type: "checkbox", checked: !!s.autoSpeak, onchange: (e) => { S.settings = { ...S.settings, autoSpeak: e.target.checked }; saveSettings(S.settings); } }),
+        h("span"))),
+    h("section", { class: "panel" },
       h("div", { style: "font-weight:650;font-size:18px" }, "Тема"),
       [["system", "Как в телефоне"], ["light", "Светлая"], ["dark", "Тёмная"]].map(([v, label]) =>
         h("label", { class: "radio" },
@@ -564,7 +578,7 @@ function fitToScreen(force = false) {
   fit = { key, k, builtHeight };
   // Возвращаем подсказку в пустое поле и фиксируем его высоту.
   if (built && !S.task.built.length && !isDone(S.task)) {
-    built.append(h("span", { class: "ph" }, "Нажимайте слова по порядку. Нажатие на слово здесь убирает его."));
+    built.append(h("span", { class: "ph" }, PLACEHOLDER));
   }
   if (built && builtHeight) built.style.minHeight = builtHeight + "px";
 }

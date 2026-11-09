@@ -223,6 +223,17 @@ export const startsWith = (variant, prefix) =>
 export const same = (a, b) => a.length === b.length && startsWith(a, b);
 
 export const isDone = (t) => t.solved || t.revealed;
+
+/** Какие кнопки уже использованы: слово ушло в строку ответа (по одной кнопке на каждое слово). */
+export function usedButtons(t) {
+  const inBuilt = new Map();
+  t.built.forEach((w) => inBuilt.set(key(w), (inBuilt.get(key(w)) || 0) + 1));
+  return t.buttons.map((w) => {
+    const left = inBuilt.get(key(w)) || 0;
+    if (left > 0) { inBuilt.set(key(w), left - 1); return true; }
+    return false;
+  });
+}
 /** Балл: без ошибок 5, каждая ошибка −1, минимум 2; «Показать ответ» — 2. */
 export const scoreOf = (t) => (t.revealed ? 2 : Math.max(2, 5 - t.errors));
 export const answerText = (t) => sentence(isDone(t) ? t.built : t.variants[0], t.punctuation);
@@ -262,10 +273,22 @@ export class LessonEngine {
 
   newTask(item) {
     const vars = this.variantsOf(item);
+    // Слово, которое встречается в ответе дважды (the … the), получает две кнопки:
+    // каждая нажатая кнопка «уходит» в строку ответа.
+    const need = new Map();
+    for (const v of vars) {
+      const local = new Map();
+      v.forEach((w) => local.set(key(w), (local.get(key(w)) || 0) + 1));
+      local.forEach((n, k) => need.set(k, Math.max(n, need.get(k) || 0)));
+    }
     const seen = new Set();
-    const buttons = shuffle([...vars.flat(), ...buildTraps(item, vars, this.lexicon)]
-      .map(label)
-      .filter((w) => !seen.has(key(w)) && seen.add(key(w))));
+    const buttons = [];
+    for (const w of [...vars.flat(), ...buildTraps(item, vars, this.lexicon)].map(label)) {
+      if (seen.has(key(w))) continue;
+      seen.add(key(w));
+      for (let i = 0; i < (need.get(key(w)) || 1); i++) buttons.push(w);
+    }
+    shuffle(buttons);
     return {
       item, variants: vars, buttons, punctuation: punctuation(item.answers[0]),
       built: [], marked: [], errors: 0, failedChecks: 0, wrongWords: [], missed: [], penalized: [],

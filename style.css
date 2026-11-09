@@ -113,6 +113,9 @@ h1 { font-size: 22px; margin: 0; line-height: 1.2; }
   transition: transform .06s;
 }
 .tile:active { transform: translateY(1px); }
+/* Использованное слово «ушло» в строку ответа: кнопки не видно, место сохраняется. */
+.tile.used { visibility: hidden; }
+.btn.erase { font-size: 24px; line-height: 1; }
 /* Когда ответ собран: результат и кнопки «Озвучить» / «Дальше» вместо кнопок слов */
 .done-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 .done-panel .others { font-size: calc(14px * var(--k)); color: var(--muted); }
